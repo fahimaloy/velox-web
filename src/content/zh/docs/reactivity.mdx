@@ -1,0 +1,111 @@
+---
+title: 响应式
+description: 信号、计算值、副作用、监视器和双向绑定。
+order: 11
+section: guide
+readingMinutes: 8
+---
+
+State 是一个 Rust 结构体。响应式是一组你放入字段的原语。
+其背后没有虚拟 DOM，默认也没有自动依赖追踪 — `watch` 和 `effect` 是显式的。
+
+## 信号
+
+```rust
+use velox_core::signal::Signal;
+
+pub struct State {
+    counter: Rc<Signal<i32>>,
+    name: Rc<Signal<String>>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self {
+            counter: velox_core::signal!(counter = 0),
+            name: velox_core::signal!(name = String::new()),
+        }
+    }
+
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+}
+```
+
+`signal!(name = value)` 是一个宏，展开为 `Rc<Signal<T>>`。用 `.set()` 写入会标记依赖为脏；用 `.get()` 读取会将调用者注册为依赖。
+
+```html
+<template>
+  <p>{{ count() }}</p>
+  <button @click="increment">+1</button>
+</template>
+```
+
+模板的 `{{ count() }}` 每帧解析，所以值始终是当前的 — 信号的唯一工作是调度重绘。
+
+<Callout type="note" title="即时模式，所以读取很廉价">
+因为没有保留的树需要补丁，在渲染函数内部读取信号**不是**一个被追踪的依赖 — 它只是返回值。帧结束时，接触过该信号的组件会被重新计算。
+</Callout>
+
+## 计算值
+
+```rust
+use velox_core::computed::Computed;
+
+impl State {
+    pub fn doubled(&self) -> Computed<i32> {
+        Computed::new(|| self.counter.get() * 2)
+    }
+}
+```
+
+`Computed` 是惰性的。它缓存结果，仅在其依赖变脏时重新计算。读取一个计算值能看到其所有上游信号最精确的值。
+
+## 副作用
+
+```rust
+use velox_core::effect::Effect;
+
+impl State {
+    pub fn log_counter(&self) -> Effect {
+        Effect::new(|| {
+            println!("Counter is now: {}", self.counter.get());
+        })
+    }
+}
+```
+
+如果依赖变脏，`Effect` **每帧**运行一次。如果什么都没变它**不**重新运行。它可以返回一个清理函数（在下一次运行前或 drop 时调用）。
+
+## 监视器
+
+```rust
+use velox_core::watch::watch;
+
+impl State {
+    pub fn watch_counter(&self) {
+        watch(&self.counter, |old, new| {
+            println!("Changed from {} to {}", old, new);
+        });
+    }
+}
+```
+
+`watch` 是一个细粒度响应式原语。它**仅在**指定信号改变时触发 — 不是整个计算图。
+
+## 双向绑定 (v-model)
+
+<Callout type="success" title="v-model 已实现">
+`v-model="field"` 编译为 `State` 上生成的 `__vmodel_set_field` setter 方法，连接到事件分发器。它是可工作的。
+</Callout>
+
+```html
+<input v-model="name" />
+```
+
+这展开为：
+- 一个 `:value="name"` 绑定
+- 一个 `@input="__vmodel_set_name"` 处理器
+
+生成的 setter 是 `State` 上的 `&self` 方法，因此它尊重借用规则。

@@ -1,0 +1,103 @@
+---
+title: 事件与输入
+description: 三个运行时事件通道、载荷，以及点击如何解析到处理器。
+order: 13
+section: guide
+readingMinutes: 7
+---
+
+Velox 只有恰好三个运行时事件通道。不是通用事件系统 — 渲染器读取三个特定属性。
+
+<Callout type="danger" title="只有这三个，别无其他">
+- `on:click`
+- `on:click-payload`
+- `on:input`
+
+没有 `on:change`、没有 `on:mouseover`、没有 `on:keydown`、没有 `on:submit`、也没有捕获阶段。快速网络搜索可能告诉你其他的；源码是明确的 — `velox-renderer/src/events.rs` 导出的只有这三个。
+</Callout>
+
+## on:click
+
+简单的点击。无载荷。处理器签名:
+
+```rust
+pub fn on_click(&self) { /* ... */ }
+```
+
+模板中:
+
+```html
+<button @click="on_click">点击我</button>
+```
+
+## on:click-payload
+
+带载荷的点击事件。处理器签名接受一个参数:
+
+```rust
+use velox_core::event::ClickPayload;
+
+pub fn on_click_payload(&self, payload: ClickPayload) { /* ... */ }
+```
+
+`ClickPayload` 包含:
+- `x: f32` — 视口相对 X
+- `y: f32` — 视口相对 Y
+- `button: MouseButton` — `Left` | `Right` | `Middle` | `Back` | `Forward` | `Other(u16)`
+- `modifiers: KeyModifiers` — `shift`, `ctrl`, `alt`, `meta`, `super`
+
+模板中:
+
+```html
+<button @click-payload="on_click_payload">带载荷的点击</button>
+```
+
+## on:input
+
+文本输入变化。**每按键**触发。处理器签名:
+
+```rust
+pub fn on_input(&self, value: String) { /* ... */ }
+```
+
+模板中:
+
+```html
+<input @input="on_input" />
+```
+
+值是输入的**下一个当前值**。不会因按键而延迟 — 直接从事件获得。
+
+<Callout type="warning" title="防抖是你的责任">
+`on:input` 每按键触发。如果处理器昂贵 (如: 过滤列表)，在 `State` 内部自己防抖。
+</Callout>
+
+## 无按键事件
+
+没有 `on:keydown` / `on:keyup` / `on:keypress`。特殊键 (`Enter`, `Escape`, `Tab`) 不在 `on:input` 中复用 — 它们保持空。如果你需要 `Enter` 提交，在按钮上用 `on:click` 处理表单提交逻辑。
+
+## 无焦点遍历
+
+`Tab` 键不用于键盘导航。没有焦点遍历系统。如果需要无障碍，你必须自己构建 (如: 一个焦点管理器信号)。
+
+## 载荷类型 (参考)
+
+```rust
+pub struct ClickPayload {
+    pub x: f32,
+    pub y: f32,
+    pub button: MouseButton,
+    pub modifiers: KeyModifiers,
+}
+
+pub enum MouseButton {
+    Left, Right, Middle, Back, Forward, Other(u16),
+}
+
+pub struct KeyModifiers {
+    pub shift: bool,
+    pub ctrl: bool,
+    pub alt: bool,
+    pub meta: bool,
+}
+```

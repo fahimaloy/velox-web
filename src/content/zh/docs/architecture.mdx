@@ -1,0 +1,57 @@
+---
+title: 架构
+description: 六个 crate、各自拥有什么、以及它们之间的边界。
+order: 30
+section: internals
+readingMinutes: 7
+---
+
+六个独立的 crate。依赖方向严格向下，无循环。
+
+```
+velox-cli            (无框架依赖 — shell 出到 cargo)
+     │
+velox-sfc ──────────► velox-core
+     │
+     ▼
+velox-renderer ────► velox-dom ────► velox-style ────► velox-core
+```
+
+## velox-core
+
+信号、计算值、副作用、监视器、生命周期钩子。对布局、CSS 或绘图一无所知 — 它是 Rust 值上的纯响应式。
+
+## velox-sfc
+
+单文件组件编译器。解析 `.vx` 文件 (模板/脚本/样式)，将模板代码生成为 Rust 函数 (`render()`)，处理作用域 CSS。依赖 `velox-core` 获取响应式原语。
+
+## velox-renderer
+
+渲染器。接收一个信号图，调用 `render()` 得到 VNode 树，用 `velox-dom` 计算布局，然后用 Skia 光栅化。CPU 光栅化为默认；GPU 路径为可选且未完成。
+
+## velox-dom
+
+布局引擎。实现块、flex (子集) 和文本换行。从 `velox-style` 获取计算样式。无虚拟 DOM diff — 每帧重新计算几何信息。
+
+## velox-style
+
+样式引擎。属性解析、选择器匹配、级联解析 (源码顺序、最后规则胜出、无特异性)。建立在 `velox-core` 信号之上的响应式。
+
+## velox-core (再次作为叶子)
+
+依赖图的底部。纯 Rust — 无平台代码。
+
+## 行数 (约)
+
+| Crate | 行数 (约) |
+| --- | --- |
+| velox-sfc | ~13,000 |
+| velox-renderer | ~12,100 |
+| velox-dom | ~9,000 |
+| velox-cli | ~3,200 |
+| velox-core | ~2,300 |
+| velox-style | ~1,800 |
+
+## 集成测试
+
+944 个集成测试 (每个都是一个渲染证明)。

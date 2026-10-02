@@ -1,0 +1,163 @@
+---
+title: 单文件组件
+description: .vx 文件的解剖：模板、脚本设置和作用域样式表。
+order: 10
+section: guide
+readingMinutes: 8
+---
+
+一个 Velox 组件是一个以 `.vx` 结尾的文件，最多包含三个块。三个都是可选的，但只有模板的组件是静态的。
+
+## 三个块
+
+```html
+<template>…</template>
+<script setup>…</script>
+<style scoped>…</style>
+```
+
+- **`<template>`** — 标记，使用 Velox 自有的属性语法。
+- **`<script setup>`** — 一个包含 Rust `State` 结构体的项，它是模板所解析的内容。
+- **`<style scoped>`** — 作用域 CSS。作用域在编译时通过注入 `data-v-<hash>` 属性实现 — 无运行时成本。
+
+## 模板语法
+
+Velox 模板使用类 HTML 语法，但有自己的属性系统：
+
+| 语法 | 含义 |
+| --- | --- |
+| `{{ expr }}` | 文本插值（表达式每帧求值） |
+| `:prop="expr"` | 属性绑定（布尔/字符串/数字） |
+| `@event="handler"` | 事件监听器（`on:click`、`on:click-payload`、`on:input`） |
+| `v-model="field"` | 双向绑定（展开为 `:value` + `@input`） |
+| `v-if="cond"` | 条件渲染 |
+| `v-else-if="cond"` | 备选条件 |
+| `v-else` | 回退分支 |
+| `v-for="item in list"` | 列表渲染 |
+| `v-show="cond"` | 切换 `display: none`，保留节点 |
+
+**不支持**: `v-slot`（不在文法中）、`v-pre`、`v-once`、`v-cloak`、`v-memo`。
+
+### 插值
+
+```html
+<p>{{ count() }}</p>
+```
+
+`count()` 是 `State` 上的一个方法。它在**每一帧**被调用，因此值始终是最新的。
+
+### 条件渲染
+
+```html
+<div v-if="show">Visible</div>
+<div v-else-if="other">Alt</div>
+<div v-else>Fallback</div>
+```
+
+`v-else-if` / `v-else` 必须直接跟在 `v-if` / `v-else-if` 之后。
+
+### 列表渲染
+
+```html
+<ul>
+  <li v-for="todo in todos">{{ todo.text }}</li>
+</ul>
+```
+
+循环变量在块内作用域。无 `:key` — 协调器不存在，因此键不会被使用。
+
+### v-show
+
+```html
+<div v-show="is_visible">Toggled</div>
+```
+
+在元素上切换 `display: none`。节点保留在树中（布局仍会为其计算几何信息，只是不绘制）。
+
+## 脚本设置
+
+```html
+<script setup>
+use velox_core::signal::Signal;
+use velox_core::computed::Computed;
+
+pub struct Props {
+    pub initial: i32,
+}
+
+pub struct State {
+    pub props: Props,
+    counter: Rc<Signal<i32>>,
+}
+
+impl State {
+    pub fn new(props: Props) -> Self {
+        Self {
+            props,
+            counter: velox_core::signal!(counter = 0),
+        }
+    }
+
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+
+    pub fn doubled(&self) -> Computed<i32> {
+        Computed::new(|| self.counter.get() * 2)
+    }
+}
+</script>
+```
+
+- `Props` — 父组件传入的内容。类型检查在编译时进行。
+- `State` — 组件的私有状态。包含 `props` 和任意字段。
+- 方法在 `impl State` 中定义。模板通过名称引用它们。
+
+## 作用域样式
+
+```html
+<style scoped>
+.my-button {
+    background: #1a1a2e;
+    color: #e8c547;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+</style>
+```
+
+作用域通过在编译时向模板元素注入 `data-v-<hash>` 属性来实现。选择器被重写为仅匹配该组件的树。无运行时成本。
+
+## 完整示例
+
+```html
+<template>
+  <div class="counter">
+    <p>Count: {{ count() }}</p>
+    <button @click="increment">+1</button>
+    <button @click="decrement">-1</button>
+  </div>
+</template>
+
+<script setup>
+use velox_core::signal::Signal;
+
+pub struct State {
+    counter: Rc<Signal<i32>>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self { counter: velox_core::signal!(counter = 0) }
+    }
+    pub fn count(&self) -> i32 { self.counter.get() }
+    pub fn increment(&self) { self.counter.set(self.counter.get() + 1); }
+    pub fn decrement(&self) { self.counter.set(self.counter.get() - 1); }
+}
+</script>
+
+<style scoped>
+.counter { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+button { padding: 8px 16px; border-radius: 4px; background: #1a1a2e; color: #e8c547; border: none; cursor: pointer; }
+</style>
+```

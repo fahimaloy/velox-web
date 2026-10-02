@@ -1,0 +1,80 @@
+---
+title: 组件与 Props
+description: Props、emits、slots，以及父组件如何组合子组件。
+order: 14
+section: guide
+readingMinutes: 7
+---
+
+组件是 `.vx` 文件。父组件导入子组件；代码生成在构建时将子组件的 VNode 树内联到父组件中。
+
+## Props
+
+子组件在 `Props` 结构体中声明它们:
+
+```html
+<script setup>
+pub struct Props {
+    pub value: String,
+    pub placeholder: String,
+}
+
+pub struct State {
+    pub props: Props,
+}
+</script>
+```
+
+父组件绑定它们:
+
+```html
+<TodoInput :value="draft" :placeholder="input_placeholder" />
+```
+
+Props 类型检查。缺失的 prop 是编译错误，不是运行时惊喜。
+
+## Emits
+
+<Callout type="danger" title="emit() 编译但不做任何事">
+名称被绑定，主体是 no-op。所以 `<Confirm @confirm="…">` 是惰性的。这是一个已记录的限制 — 事件分发器没有 `emit` 调用路径所以它被丢弃。
+</Callout>
+
+```html
+<script setup>
+pub struct Props {
+    pub on_confirm: Option<fn()>,
+}
+</script>
+```
+
+父组件写:
+
+```html
+<Confirm @confirm="handle_confirm" />
+```
+
+编译器编码了 slot 绑定，但运行时没有处理器调用路径。
+
+## Slots
+
+<Callout type="danger" title="命名插槽不存在">
+`v-slot` 不在文法中。`<slot>` 元素被解析但无分发逻辑 — 子内容直接渲染。
+</Callout>
+
+默认 slot 内容被内联。命名插槽 (`v-slot:foo` 或 `#foo="slotProps"`) 是未来功能。
+
+## v-model (双向绑定)
+
+```html
+<input v-model="name" />
+```
+
+这展开为:
+- `:value="name"`
+- `@input="__vmodel_set_name"`
+
+生成的 setter 是 `State` 上的 `&self` 方法，连接到事件分发器。
+
+## 组件组合
+
+因为代码生成内联，父组件可以直接访问子组件的信号/计算值/副作用（如果子组件导出它们）。无运行时 prop drilling — 没什么需要保持私有的。

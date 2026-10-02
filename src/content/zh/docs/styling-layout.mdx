@@ -1,0 +1,84 @@
+---
+title: 样式与布局
+description: 被识别的属性、匹配的选择器，以及级联的行为。
+order: 12
+section: guide
+readingMinutes: 9
+---
+
+Velox 实现了 CSS 的一个子集：足够用于真实布局的 Flexbox、一个覆盖应用所需的属性集、以及一个比 CSS 更简单的级联。
+
+<Callout type="warning" title="级联没有特异性也没有 !important">
+规则按源码顺序应用，一个属性的**最后**匹配规则获胜。排序是唯一的覆盖机制。两个后果：后来追加的规则总是获胜，无论你认为它多么具体。
+</Callout>
+
+## 被识别的属性
+
+| 类别 | 属性 |
+| --- | --- |
+| 显示 | `display`, `visibility` |
+| 盒模型 | `width`, `height`, `min-width`, `min-height`, `max-width`, `max-height`, `box-sizing` |
+| 间距 | `margin`, `margin-*`, `padding`, `padding-*`, `gap` |
+| 边框 | `border`, `border-*`, `border-radius` |
+| 背景 | `background`, `background-color`, `background-image` |
+| 文本 | `color`, `font-size`, `font-family`, `font-weight`, `line-height`, `text-align`, `white-space` |
+| Flexbox | `flex`, `flex-direction`, `flex-wrap`, `justify-content`, `align-items`, `align-content`, `gap`, `flex-grow`, `flex-shrink`, `flex-basis`, `order` |
+| 定位 | `position`, `top`, `right`, `bottom`, `left`, `z-index` |
+| 其他 | `opacity`, `overflow`, `cursor`, `pointer-events` |
+
+**不识别的属性**: calc 表达式 (`calc()`)、自定义属性 (`var(--x)`)、媒体查询 (`@media`)、分页 (`@page`)、动画/过渡、变换、滤镜、混合模式、遮罩、裁剪路径、形状外部、字体相对单位。
+
+<Callout type="danger" title="自定义属性 (var()) 惰性">
+`var(--x)` 会被解析但**没有替换步骤**。它通过 linter 但在渲染时什么都不做。
+</Callout>
+
+<Callout type="danger" title="@media 永不求值">
+媒体查询作为语法被解析但**永不求值** — 它们在两种模式下都应用。
+</Callout>
+
+## 级联顺序
+
+1. 用户代理默认值 (Velox 内置重置)
+2. `<style scoped>` 块 (组件局部，源码顺序)
+3. 全局样式表 (导入顺序)
+4. 内联属性 (`style="..."`) — 最高优先级
+
+对于同一属性，**最后的规则获胜**。没有 `!important`，没有特异性计算。
+
+## 选择器
+
+支持: 类型 (`div`)、类 (`.foo`)、ID (`#bar`)、后代 (`ancestor descendant`)、子代 (`parent > child`)、属性 (`[attr]`、`[attr=val]`)、伪类 (`:hover`、`:focus`、`:first-child`、`:last-child`、`:nth-child()`)。
+
+**不支持**: `+` / `~` 组合器 (作为标签名解析，从不匹配)、`:not()`、`:has()`、`:where()`、`::before` / `::after` 伪元素。
+
+## Flexbox — 支持的子集
+
+| 属性 | 状态 |
+| --- | --- |
+| `flex-direction` | ✅ `row` / `column` / `reverse` |
+| `flex-wrap` | ✅ `nowrap` / `wrap` / `wrap-reverse` |
+| `justify-content` | ✅ `flex-start` / `center` / `flex-end` / `space-between` / `space-around` / `space-evenly` |
+| `align-items` | ✅ `stretch` / `flex-start` / `center` / `flex-end` / `baseline` |
+| `align-content` | ✅ `stretch` / `flex-start` / `center` / `flex-end` / `space-between` / `space-around` |
+| `gap` / `row-gap` / `column-gap` | ✅ |
+| `flex-grow` / `flex-shrink` / `flex-basis` | ✅ |
+| `order` | ✅ |
+| `align-self` | ✅ |
+
+**注意**: `flex` 简写会被解析但行为可能与 CSS 规范不同。请分别使用 grow/shrink/basis。
+
+## 作用域样式
+
+`<style scoped>` 一个组件中的样式仅限于该组件的模板元素。作用域在编译时通过注入 `data-v-<hash>` 属性实现 — 无运行时开销。
+
+```html
+<style scoped>
+.my-class { color: red; }
+</style>
+```
+
+外部无法定位你的组件元素，除非你使用 `:deep()` 或 `:global()` (Velox 目前不支持)。
+
+## 响应式设计
+
+`@media` 不工作。替代方案: 在运行时获取视口尺寸 (`velox_core::viewport::Viewport::get()`) 并通过计算属性或副作用切换类。

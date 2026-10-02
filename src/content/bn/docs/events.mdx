@@ -1,0 +1,103 @@
+---
+title: ইভেন্ট এবং ইনপুট
+description: তিনটি রানটাইম ইভেন্ট চ্যানেল, পেলোড, এবং কীভাবে একটি ক্লিক হ্যান্ডলারে রেজল্ভ হয়।
+order: 13
+section: guide
+readingMinutes: 7
+---
+
+ভেলক্সের ঠিক তিনটি রানটাইম ইভেন্ট চ্যানেল আছে। একটি জেনারেল ইভেন্ট সিস্টেম নয় — তিনটি স্পেসিফিক অ্যট্রিবিউট যা রেন্ডারার পড়ে।
+
+<Callout type="danger" title="এই তিনটি, আর কোনো">
+- `on:click`
+- `on:click-payload`
+- `on:input`
+
+`on:change` নেই, `on:mouseover` নেই, `on:keydown` নেই, `on:submit` নেই, এবং ক্যাপচার ফেজ নেই। এই ফ্রেমওয়ার্কের জন্য দ্রুত একটি ওয়েব সার্চ আপনাকে অন্যথা বলতে পারে; সোর্স অনন্য — `velox-renderer/src/events.rs` এই তিনটির বাইরে কিছু এক্সপোর্ট করে না।
+</Callout>
+
+## on:click
+
+সহজestic ক্লিক। কোনো পেলোড নেই। হ্যান্ডলার সিগনেচার:
+
+```rust
+pub fn on_click(&self) { /* ... */ }
+```
+
+টেমপ্লেটে:
+
+```html
+<button @click="on_click">Click me</button>
+```
+
+## on:click-payload
+
+ক্লিক ইভেন্টের সাথে একটি পেলোড। হ্যান্ডলার সিগনেচার একটি আর্গুমেন্ট নেয়:
+
+```rust
+use velox_core::event::ClickPayload;
+
+pub fn on_click_payload(&self, payload: ClickPayload) { /* ... */ }
+```
+
+`ClickPayload` কন্টেইন করে:
+- `x: f32` — ভিউপোর্ট-রিলেটিভ X
+- `y: f32` — ভিউপোর্ট-রিলেটিভ Y
+- `button: MouseButton` — `Left` | `Right` | `Middle` | `Back` | `Forward` | `Other(u16)`
+- `modifiers: KeyModifiers` — `shift`, `ctrl`, `alt`, `meta`, `super`
+
+টেমপ্লেটে:
+
+```html
+<button @click-payload="on_click_payload">Click with payload</button>
+```
+
+## on:input
+
+টেক্সট ইনপুট পরিবর্তন। ফায়ার হয় **প্রতি কীস্ট্রোকে**। হ্যান্ডলার সিগনেচার:
+
+```rust
+pub fn on_input(&self, value: String) { /* ... */ }
+```
+
+টেমপ্লেটে:
+
+```html
+<input @input="on_input" />
+```
+
+ভ্যালুটি **ইনপুটের পরবর্তী বর্তমান ভ্যালু**। একটি কীপ্রেসের পর জুড়ে থাকে না — এটি ইভেন্ট থেকে সরাসরি পাওয়া যায়।
+
+<Callout type="warning" title="ডিবাউন্সিং আপনার দায়িত্ব">
+`on:input` প্রতি কীস্ট্রোকে ফায়ার করে। যদি আপনার হ্যান্ডলার এক্সপেনসিভ হয় (যেমন: একটি লিস্ট ফিল্টার করা), আপনি `State` এর ভেতরে ডিবাউন্স করুন।
+</Callout>
+
+## কী ইভেন্ট নেই
+
+`on:keydown` / `on:keyup` / `on:keypress` নেই। বিশেষ কী (`Enter`, `Escape`, `Tab`) মাল্টিপ্লেক্সড `on:input`-এ আসে না — সেগুলো খালি থাকে। যদি আপনাকে `Enter`-এ সাবমিট করতে হয়, বাটনে `on:click` দিয়ে ফর্ম সাবমিট লজিক রাখুন।
+
+## ফোকাস ট্র্যাভার্সাল নেই
+
+`Tab` কীবোর্ড নেভিগেশনের জন্য কাজ করে না। কোনো ফোকাস ট্র্যাভার্সাল সিস্টেম নেই। অ্যাক্সেসিবিলিটি যদি প্রয়োজন হয়, আপনাকে নিজে বিল্ড করতে হবে (যেমন: একটি ফোকাস ম্যানেজার সিগন্যাল)।
+
+## পেলোড টাইপ (রেফারেন্স)
+
+```rust
+pub struct ClickPayload {
+    pub x: f32,
+    pub y: f32,
+    pub button: MouseButton,
+    pub modifiers: KeyModifiers,
+}
+
+pub enum MouseButton {
+    Left, Right, Middle, Back, Forward, Other(u16),
+}
+
+pub struct KeyModifiers {
+    pub shift: bool,
+    pub ctrl: bool,
+    pub alt: bool,
+    pub meta: bool,
+}
+```

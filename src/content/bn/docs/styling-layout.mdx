@@ -1,0 +1,84 @@
+---
+title: স্টাইলিং এবং লেআউট
+description: যেসব প্রপার্টি রিকগ্নাইজ করা হয়, যেসব সিলেক্টর ম্যাচ করে, এবং ক্যাসকেড কী করে।
+order: 12
+section: guide
+readingMinutes: 9
+---
+
+ভেলক্স সিএসএস-এর একটি সাবসেট বাস্তবায়ন করে: রিয়েল লেআউটের জন্য পর্যাপ্ত ফ্লেক্সবক্স, একটি অ্যাপের التى কভার করে এমন প্রপার্টি সেট, এবং সিএসএস-এর চেয়ে সহজ একটি ক্যাসকেড।
+
+<Callout type="warning" title="ক্যাসকেডের কোন স্পেসিফিসিটি নেই এবং !important নেই">
+নियम সোর্ড অর্ডারে প্রয়োগ হয় এবং একটি প্রপার্টির জন্য **শেষ** ম্যাচিং রুল জেতে। অর্ডারিং হল একমাত্র ওভাররাইড মেকানিজম। দুইটি ফলাফল: পরবর্তীতে যোগ করা একটি রুল সবসময় জেতে, মনে করা যে এটি আরও স্পেসিফিক।
+</Callout>
+
+## রিকগ্নাইজড প্রপার্টি
+
+| ক্যাটাগরি | প্রপার্টি |
+| --- | --- |
+| ডিসপ্লে | `display`, `visibility` |
+| বক্স | `width`, `height`, `min-width`, `min-height`, `max-width`, `max-height`, `box-sizing` |
+| স্পেসিং | `margin`, `margin-*`, `padding`, `padding-*`, `gap` |
+| বর্ডার | `border`, `border-*`, `border-radius` |
+| ব্যাকগ্রাউন্ড | `background`, `background-color`, `background-image` |
+| টেক্সট | `color`, `font-size`, `font-family`, `font-weight`, `line-height`, `text-align`, `white-space` |
+| ফ্লেক্স | `flex`, `flex-direction`, `flex-wrap`, `justify-content`, `align-items`, `align-content`, `gap`, `flex-grow`, `flex-shrink`, `flex-basis`, `order` |
+| পজিশন | `position`, `top`, `right`, `bottom`, `left`, `z-index` |
+| অন্যান্য | `opacity`, `overflow`, `cursor`, `pointer-events` |
+
+**রিকগ্নাইজড না হওয়া প্রপার্টি**: ক্যাপ এক্সপ্রেশন (`calc()`), কাস্টম প্রপার্টি (`var(--x)`), মিডিয়া কোয়েরি (`@media`), পেজিনেশন (`@page`), অ্যানিমেশন/ট্রানজিশন, ট্রান্সফর্ম, ফিল্টার, ব্ল্যান্ড মোড, ম্যাস্ক, ক্লিপ-পাথ, শেপ-আউটসাইড, আপসিডি।
+
+<Callout type="danger" title="কাস্টম প্রপার্টি (var()) নিষ্ক্রিয়">
+`var(--x)` পার্স হয় কিন্তু কোন সাবস্টিটিউশন ステップ নেই। এটি লিন্টারকে পাস করে কিন্তু রেন্ডার সময় কোনো কিছুই করে না।
+</Callout>
+
+<Callout type="danger" title="@media কখনো ইভ্যালুয়েট হয় না">
+মিডিয়া কোয়েরি সিনট্যাক্স হিসেবে পার্স হয় কিন্তু **কখনো ইভ্যালুয়েট হয় না** — সেগুলো উভয় মোডেই প্রয়োগ হয়।
+</Callout>
+
+## ক্যাসকেড অর্ডার
+
+1.  ইউজার-এজেন্ট ডিফল্ট (ভেলক্সের বিল্ট-ইন রিসেট)
+2.  `<style scoped>` ব্লক (কম্পোনেন্ট-লোকাল, সোর্ড অর্ডার)
+3.  গ্লোবাল স্টাইলশিট (ইম্পোর্ট অর্ডার)
+4.  ইপসেড অ্যট্রিবিউট (`style="..."`) — সবচেয়ে হাই প্রায়োরিটি
+
+একই প্রপার্টির জন্য, **শেষ রুল জেতে**। কোনো `!important` নেই, কোনো স্পেসিফিসিটি ক্যালকুলেশন নেই।
+
+## সিলেক্টর
+
+সাপোর্টেড: টাইপ (`div`)، ক্লাস (`.foo`)، আইডি (`#bar`)、ডিসেন্ডেন্ট (`ancestor descendant`)、চাইল্ড (`parent > child`)、এট্রিবিউট (`[attr]`、`[attr=val]`)、পseudo-ক্লাস (`:hover`、`:focus`、`:first-child`、`:last-child`、`:nth-child()`)।
+
+**না**: `+` / `~` কম্বিনেটর (ট্যাগ নাম হিসেবে পার্স হয়, কখনো ম্যাচ করে না)، `:not()`، `:has()`، `:where()`، `::before` / `::after` pseudo-এলিমেন্ট।
+
+## ফ্লেক্সবক্স — সাপোর্টেড সাবসেট
+
+| প্রপার্টি | স্ট্যাটাস |
+| --- | --- |
+| `flex-direction` | ✅ `row` / `column` / `reverse` |
+| `flex-wrap` | ✅ `nowrap` / `wrap` / `wrap-reverse` |
+| `justify-content` | ✅ `flex-start` / `center` / `flex-end` / `space-between` / `space-around` / `space-evenly` |
+| `align-items` | ✅ `stretch` / `flex-start` / `center` / `flex-end` / `baseline` |
+| `align-content` | ✅ `stretch` / `flex-start` / `center` / `flex-end` / `space-between` / `space-around` |
+| `gap` / `row-gap` / `column-gap` | ✅ |
+| `flex-grow` / `flex-shrink` / `flex-basis` | ✅ |
+| `order` | ✅ |
+| `align-self` | ✅ |
+
+**নির্দিষ্ট)**: `flex` শর্টহ্যান্ড পার্স হয় কিন্তু বিহেভিয়ার সিএসএস স্পেস থেকে ভিন্ন হতে পারে। গ্রো/শ্রিংক/বেসিস আলাদা ব্যবহার করুন।
+
+## স্কোপড স্টাইল
+
+`<style scoped>` একটি কম্পোনেন্টে সেই কম্পোনেন্টের টেমপ্লেট এলিমেন্টগুলোর জন্য সীমাবদ্ধ থাকে। স্কোপিং কম্পাইল-টাইমে হয় (`data-v-<hash>` অ্যট্রিবিউট ইনজেক্ট করে) — রানটাইম কস্ট নেই।
+
+```html
+<style scoped>
+.my-class { color: red; }
+</style>
+```
+
+বाहের থেকে আপনার কম্পোনেন্টের এলিমেন্ট টার্গেট করা যাবে না যদি না আপনি `:deep()` বা `:global()` ব্যবহার করেন (ভেলক্সে বর্তমানে সাপোর্টেড নেই)।
+
+## রেসপন্সিভ ডিজাইন
+
+`@media` কাজ করে না। পরিবর্তে, রানটাইমে ভিউপোর্টের মাপ জানুন (`velox_core::viewport::Viewport::get()`) এবং কম্পিউটেড প্রপার্টি বা ইফেক্টের মাধ্যমে ক্লাস টগল করুন।

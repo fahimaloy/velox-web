@@ -1,0 +1,111 @@
+---
+title: রিঅ্যাক্টিভিটি
+description: সিগন্যাল, কম্পিউটেড ভ্যালু, ইফেক্ট, ওয়াচার এবং টু-ওয়ে বাইন্ডিং।
+order: 11
+section: guide
+readingMinutes: 8
+---
+
+স্টেট হল একটি রাস্ট স্ট্রাক্ট। রিঅ্যাক্টিভিটি হল প্রিমিটিভের একটি সেট যা আপনি ফিল্ডে রাখেন।
+এর পেছনে কোন ভার্চুয়াল ডোম নেই এবং ডিফল্ট অনুযায়ী কোন অটোমেটিক ডিপেন্ডেন্সি ট্র্যাকিং নেই — `watch` এবং `effect` এক্সপ্লিসিট।
+
+## সিগন্যাল
+
+```rust
+use velox_core::signal::Signal;
+
+pub struct State {
+    counter: Rc<Signal<i32>>,
+    name: Rc<Signal<String>>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self {
+            counter: velox_core::signal!(counter = 0),
+            name: velox_core::signal!(name = String::new()),
+        }
+    }
+
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+}
+```
+
+`signal!(name = value)` হল একটি ম্যাক্রো যা `Rc<Signal<T>>` এ এক্সপ্যান্ড হয়। `.set()` দিয়ে লেখা ডিপেন্ডেন্টকে ডার্টি মার্ক করে; `.get()` দিয়ে পড়া কলারকে ডিপেন্ডেন্ট হিসেবে রেজিস্টার করে।
+
+```html
+<template>
+  <p>{{ count() }}</p>
+  <button @click="increment">+1</button>
+</template>
+```
+
+টেমপ্লেটের `{{ count() }}` প্রতিটি ফ্রেমে রেজল্ভ হয়, তাই ভ্যালু সবসময় কারেন্ট থাকে — সিগন্যালের একমাত্র কাজ হল রিড্রো শিডিউল করা।
+
+<Callout type="note" title="ইমিডিয়েট-মোড, তাই রিড সস্তা">
+কারণ কোন রিটেইন্ড ট্রি প্যাচ করতে হয় না, একটি রেন্ডার ফাংশনের ভেতরে সিগন্যাল পড়া একটি ট্র্যাক করা ডিপেন্ডেন্সি **নहीं** — এটি শুধু মানটি ফেরত দেয়। ফ্রেমটি সমাপ্ত হলে, সিগন্যালটি যেসব কম্পোনেন্টকে স্পর্শ করেছে সেগুলো রিকম্পিউট হয়।
+</Callout>
+
+## কম্পিউটেড
+
+```rust
+use velox_core::computed::Computed;
+
+impl State {
+    pub fn doubled(&self) -> Computed<i32> {
+        Computed::new(|| self.counter.get() * 2)
+    }
+}
+```
+
+একটি `Computed` লেজি। এটি ক্যাশ করে, এবং শুধু তখন রিকম্পিউট হয় যখন এর ডিপেন্ডেন্সি ডার্টি হয়। একটি কম্পিউটেড পড়া তার আপস্ট্রিম সিগন্যালগুলোর সবস Презиস ভ্যালু দেখে।
+
+## ইফেক্ট
+
+```rust
+use velox_core::effect::Effect;
+
+impl State {
+    pub fn log_counter(&self) -> Effect {
+        Effect::new(|| {
+            println!("Counter is now: {}", self.counter.get());
+        })
+    }
+}
+```
+
+একটি `Effect` প্রতিটি ফ্রেমে রান হয় **যদি** এর ডিপেন্ডেন্সি ডার্টি হয়। এটি রি-রান করে না যদি কিছুই না বদলে। এটি ক্লিনআপ রিটার্ন করতে পারে (একটি ফাংশন যা পরবর্তী রানের আগে বা ড্রপের সময় কল করা হবে)।
+
+## ওয়াচার
+
+```rust
+use velox_core::watch::watch;
+
+impl State {
+    pub fn watch_counter(&self) {
+        watch(&self.counter, |old, new| {
+            println!("Changed from {} to {}", old, new);
+        });
+    }
+}
+```
+
+`watch` একটি ফাইন-গ্রেইন্ড রিঅ্যাক্টিভ প্রিমিটিভ। এটি শুধু তখনই ফায়ার করে যখন স펙িফাইড সিগন্যাল বদলায় — পুরো কম্পিউটেড গ্রাফ নয়।
+
+## টু-ওয়ে বাইন্ডিং (v-model)
+
+<Callout type="success" title="v-model বাস্তবায়িত">
+একটি `v-model="field"` কম্পাইল হয় একটি জেনারেটেড `__vmodel_set_field` সেটার মেথডে `State`上的, ইভেন্ট ডিসপ্যাচারের সাথে ওয়ায়ার্ড। এটি কাজ করে।
+</Callout>
+
+```html
+<input v-model="name" />
+```
+
+এটি এক্সপ্যান্ড হয়:
+- একটি `:value="name"` বাইন্ডিং
+- একটি `@input="__vmodel_set_name"` হ্যান্ডলার
+
+জেনারেটেড সেটার `State` पर একটি `&self` মেথড, তাই এটি বরোইং রুলসকে রেসপেক্ট করে।

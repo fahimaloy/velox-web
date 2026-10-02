@@ -1,0 +1,84 @@
+---
+title: CLI 参考
+description: 每个 velox 子命令: init, build, dev, run, lint, add 和 version。
+order: 20
+section: reference
+badge: beta
+readingMinutes: 5
+---
+
+## velox init
+
+```bash
+velox init <name>
+```
+
+脚手架一个 cargo 项目，包含 `Cargo.toml`、`build.rs`、`assets/` 和 `src/{App.vx,main.rs}`。
+
+| 标志 | 效果 |
+| --- | --- |
+| `--name <name>` | 覆盖 crate 名称 |
+| `--v <0.1.0>` | 版本字符串 |
+| `--edition <2024>` | Rust 版本 |
+| `--force` | 覆盖现有文件 |
+| `--dry-run` | 打印计划，不写入 |
+
+## velox build
+
+```bash
+velox build [--release]
+```
+
+构建项目。`--release` 启用优化。
+
+| 标志 | 效果 |
+| --- | --- |
+| `--release` | 发布模式构建 |
+| `--target <triple>` | 交叉编译目标 |
+| `--no-default-features` | 禁用默认特性 |
+
+## velox dev
+
+```bash
+velox dev [--port <3000>] [--open]
+```
+
+运行带文件监视的开发服务器。热重载在 `.vx` 和 Rust 文件变更时触发。
+
+| 标志 | 效果 |
+| --- | --- |
+| `--port <3000>` | 设置端口 |
+| `--open` | 打开浏览器 |
+| `--no-hmr` | 禁用热模块替换 |
+
+## velox run
+
+```bash
+velox run [--release] [-- <args>...]
+```
+
+执行构建的二进制。`--` 后的参数传给程序。
+
+## velox lint
+
+```bash
+velox lint [--fix]
+```
+
+在 `.vx` 文件上运行 linter: 语法、不支持的属性、未使用的导入。`--fix` 尝试自动修复 (有限)。
+
+## velox add
+
+```bash
+velox add <feature>
+```
+
+向项目添加特性/依赖。当前支持: `router`, `http`, `serde`。
+
+## velox version
+
+```bash
+velox version
+```
+
+打印已安装的 velox CLI 版本。
