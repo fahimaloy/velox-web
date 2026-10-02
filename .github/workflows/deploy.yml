@@ -34,22 +34,27 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: out
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: ${{ steps.deployment.outputs.page_url }}
+      # `wrangler-action` exposes the live URL as `deployment-url`; the old
+      # `page_url` came from `upload-pages-artifact`, which this workflow no
+      # longer uses.
+      url: ${{ steps.deployment.outputs.deployment-url }}
     steps:
+      # `cloudflare/pages-action` no longer exists. It was renamed to
+      # `cloudflare/wrangler-action`, and the old name fails at "Unable to
+      # resolve action" rather than with a useful message.
+      #
+      # The previous workflow also mixed `actions/upload-pages-artifact` — a
+      # GitHub Pages concept — with a Cloudflare deploy job. Those are different
+      # platforms; combined, the workflow could never have worked.
       - id: deployment
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: velox-web
-          directory: out
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy out --project-name=velox-web --branch=main
