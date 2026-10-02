@@ -19,7 +19,7 @@ the point of this page.
 | `v-else` | Yes | Must directly follow `v-if`/`v-else-if` |
 | `v-for` | Yes | Clones the element per iteration |
 | `v-show` | Yes | Toggles `display`, keeps the node |
-| `v-model` | **No** | Parses, lints clean, does nothing |
+| `v-model` | **Yes** | Two-way binding; compiles to a generated `__vmodel_set_*` setter on `State` |
 | `v-slot` | **No** | Not in the grammar |
 
 `v-show` is the interesting one: it sets a style rather than removing the node,

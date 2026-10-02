@@ -178,8 +178,8 @@ export const DIRECTIVES = [
   {
     id: "model",
     name: "v-model",
-    implemented: false,
-    note: "Parses and lints clean, then does nothing. Use :value + @input.",
+    implemented: true,
+    note: "Two-way binding. Compiles to a generated __vmodel_set_* setter on State, wired to the event dispatcher.",
   },
   { id: "slot", name: "v-slot", implemented: false, note: "Not in the grammar at all." },
 ] as const;
