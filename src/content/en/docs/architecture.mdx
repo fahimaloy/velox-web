@@ -1,0 +1,105 @@
+---
+title: Architecture
+description: The six crates, what each owns, and the boundaries between them.
+order: 30
+section: internals
+readingMinutes: 7
+---
+
+Six independent crates. The dependency direction is strictly downward, with no
+cycles.
+
+```
+velox-cli            (no framework deps — shells out to cargo)
+     │
+velox-sfc ──────────► velox-core
+     │
+     ▼
+velox-renderer ────► velox-dom ────► velox-style ────► velox-core
+```
+
+## velox-core
+
+Signals, computed values, effects, watchers, lifecycle hooks. Knows nothing
+about layout, CSS or drawing — it is pure reactivity over Rust values.
+
+## velox-style
+
+CSS parsing, selector matching, the cascade. Knows about stylesheets and
+nothing about the DOM.
+
+Two facts worth internalising:
+
+- **No specificity, no `!important`.** `acc.insert` on the resolved map means
+  the last matching rule wins outright.
+- **`@media` preludes are never evaluated.** Inner rules are flattened into
+  the sheet unconditionally, so a media query applies in every context.
+
+## velox-dom
+
+`VNode`, the layout engine, and style resolution. Flexbox; `position: fixed`
+and `absolute`; `overflow`; per-frame `compute_layout(w, h)`.
+
+## velox-sfc
+
+Parses `.vx` and generates Rust. Owns the grammar, the AST, the parser and the
+codegen. Depends on core for reactivity types; does not depend on the renderer.
+
+## velox-renderer
+
+Skia backends, painting, hit testing, the event loop. Depends on dom.
+
+Builds with **no** backend by default. `skia` gives the API surface;
+`skia-native` adds EGL and softbuffer.
+
+## velox-cli
+
+`init`, `build`, `dev`, `run`, `lint`, `add`, `version`. Shells out to cargo
+and owns no framework dependency.
+
+## The frame
+
+```rust
+fn frame(&mut self) {
+    let vnode = view(self.width, self.height);   // immediate-mode: rebuild all
+    let mut layout = compute_layout(&vnode, self.width, self.height);
+    layout.arrange();
+    let props = resolve_styles(&vnode, &self.stylesheet);
+    paint(&vnode, &layout, &props, &mut surface);
+}
+```
+
+Every arrow is a fresh pass over a freshly built tree. Nothing is retained
+between frames.
+
+<Callout type="note" title="Why there is no retained tree">
+A reconciler existed and was deleted. On a key match it returned the previous
+frame's node and dropped the incoming content, so a keyed child whose text had
+changed kept stale text. Rather than fix that, the loop was made honestly
+immediate-mode and the reconciler removed. `docs/RECONCILER.md` in the
+repository records the reasoning.
+</Callout>
+
+## Sizing
+
+Approximate lines of Rust per crate, measured from the source:
+
+| Crate | Lines |
+| --- | ---: |
+| `velox-sfc` | 12,961 |
+| `velox-renderer` | 12,090 |
+| `velox-dom` | 8,997 |
+| `velox-cli` | 3,187 |
+| `velox-core` | 2,299 |
+| `velox-style` | 1,813 |
+
+Roughly 4,000 of those lines currently have no production callers —
+`velox-sfc/src/expr.rs` (1,973) and `velox-dom/src/text_wrap.rs` (633) are the
+two largest. They are tested but unused, and are tracked for removal.
+
+<Callout type="warning" title="Dead code is tested, not absent">
+`velox-dom/src/diff.rs` — a complete, duplicate-key-safe diff implementation —
+still ships and is exported at `velox-dom/src/lib.rs:67`. Only tests call it.
+Because it looks like a real feature, this site does not describe Velox as
+having "virtual DOM diffing". It does not.
+</Callout>

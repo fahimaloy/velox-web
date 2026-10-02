@@ -1,0 +1,167 @@
+---
+title: Quick start
+description: Scaffold a project, run it, and understand the three files you are handed.
+order: 3
+section: start
+readingMinutes: 7
+---
+
+Five commands, from nothing to a running window.
+
+## Scaffold
+
+```bash
+velox init my-app
+cd my-app
+```
+
+`init` writes a complete cargo project. The interesting parts:
+
+```
+my-app/
+├── Cargo.toml
+├── build.rs          # compiles src/App.vx into OUT_DIR before the crate builds
+├── assets/
+└── src/
+    ├── App.vx        # your component
+    └── main.rs       # opens the window and runs the event loop
+```
+
+<Callout type="note" title="The build script is not optional">
+`build.rs` calls `velox_cli::build_cmd(...)` on `src/App.vx` and writes the
+generated Rust into `OUT_DIR`. Because it emits `cargo:rerun-if-changed` for
+every `.vx` file it reads, editing a component triggers a rebuild correctly —
+including edits to *imported* components, which is the case a naive setup gets
+wrong.
+</Callout>
+
+## Check, then run
+
+```bash
+velox lint src/     # parse and style checks, no compile required
+velox run           # build and open a window
+```
+
+## The three files
+
+### `src/App.vx`
+
+A single-file component: template, script, styles.
+
+```html
+<template>
+  <div class="app">
+    <h1 class="title">{{ title() }}</h1>
+    <button class="btn inc" @click="increment">+1</button>
+  </div>
+</template>
+
+<script setup>
+pub struct State {
+    counter: velox_core::ergonomics::Ref<i32>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self { counter: velox_core::r#ref!(0) }
+    }
+
+    pub fn title(&self) -> String { String::from("Counter") }
+    pub fn count(&self) -> i32 { self.counter.get() }
+
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+}
+</script>
+
+<style scoped>
+.app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0f172a;
+    color: #f1f5f9;
+}
+</style>
+```
+
+Note the `title()` and `count()` methods. The template calls a **method on
+State**, not a bare variable — the generated `render()` resolves every
+interpolation through those accessors on every frame.
+
+### `src/main.rs`
+
+Three moving parts: a view function, an event handler, and a window.
+
+```rust
+let make_view = {
+    let state = Arc::clone(&state);
+    move |w: u32, h: u32| -> (VNode, Stylesheet) {
+        let _viewport = (w, h);
+        let vnode = app::render_with_state(
+            Arc::clone(&state),
+            app::make_resolve(Arc::clone(&state)),
+        );
+        (vnode, Stylesheet::parse(app::STYLE))
+    }
+};
+
+let on_event = app::make_on_event(Arc::clone(&state));
+velox_renderer::run_window_vnode_skia("Velox App", make_view, on_event, get_title);
+```
+
+<Callout type="warning" title="Your view function must use (w, h)">
+`make_view` is called with the current **logical** viewport size. If your
+closure ignores them, the app does not reflow on resize — a real bug that looks
+like nothing happening rather than like an error. The template's root rule
+uses `width: 100%` and `min-height: 100vh`, which is what makes
+`compute_layout(w, h)` visibly do something.
+</Callout>
+
+### `build.rs`
+
+```rust
+fn main() {
+    let input = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/App.vx");
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    velox_cli::build_cmd(&input, Some(&out_dir), velox_cli::EmitMode::Render)
+        .expect("Failed to compile App.vx");
+}
+```
+
+## Development loop
+
+```bash
+velox dev
+```
+
+File changes are reported by the OS (inotify on Linux), so a save is picked up
+in milliseconds. `target/`, `.git` and dot-directories are excluded — `cargo
+build` writes thousands of files into `target/`, and watching it exhausts the
+kernel's inotify budget.
+
+Press `r` to rebuild by hand, `q` to quit.
+
+<Callout type="danger" title="This is a rebuild, not hot reload">
+`velox dev` performs a full `cargo build` and restarts the process. Your
+in-memory state does not survive an edit. This is not the state-preserving hot
+module replacement that `vite` does; do not write documentation implying
+otherwise.
+</Callout>
+
+## Run the real examples
+
+The workspace has three runnable examples:
+
+```bash
+cargo run -p velox-example-counter
+cargo run -p velox-example-todo
+cargo run -p velox-example-showcase
+```
+
+The todo example is the interesting one — components with props and emits, a
+`v-for` over a filtered list, and a filter cycle across all/active/done. Read
+[components](/docs/components) next.

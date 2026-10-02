@@ -1,0 +1,94 @@
+---
+title: 安装
+description: 安装 CLI、从源码构建，并在你的平台上验证工具链。
+order: 2
+section: start
+readingMinutes: 5
+---
+
+Velox 以 cargo 二进制形式发布。没有 `curl | sh` 安装器，也没有预编译的二进制
+发行版；你要从一份克隆构建它。
+
+<Callout type="warning" title="需要 Rust 1.85 或更新">
+Velox 使用 Rust 2024 edition 的特性，包括 match-ergonomics 的相关改动。
+更旧的工具链会在第一次解析 `Cargo.toml` 时就失败，而不是在构建深处。
+</Callout>
+
+## 前置条件
+
+你需要 Rust 和一套 C 工具链。Skia 是一个 C++ 库，所以一旦启用
+`skia-native`，C++ 编译器就不是可选项。
+
+| 平台 | 需要 |
+| --- | --- |
+| Linux | `build-essential`、`pkg-config`、`libssl-dev` |
+| macOS | Xcode Command Line Tools（`xcode-select --install`） |
+| Windows | Microsoft C++ build tools |
+
+## 从源码构建
+
+```bash
+git clone https://github.com/fahimaloy/velox.git
+cd velox
+cargo build --workspace
+cargo test --workspace --no-fail-fast
+```
+
+## 安装 CLI
+
+```bash
+cargo install --path velox-cli --force
+```
+
+二进制文件位于 `~/.cargo/bin/velox`。
+
+```bash
+velox version
+```
+
+预期输出：
+
+```text
+velox 0.1.0
+Edition: 2024
+Platform: Linux
+```
+
+<Callout type="tip" title="不想全局安装？用别名">
+你不必安装任何东西。在克隆目录内 `cargo run -p velox-cli -- <command>`
+就能工作。
+</Callout>
+
+## 选择渲染后端
+
+渲染器 crate 默认**什么都不构建**。你需要显式选择，这是刻意为之：原生 Skia
+后端是沉重的依赖树，你不该为了跑一个 linter 或单元测试而付出这个代价。
+
+```bash
+cargo build -p velox-renderer --features skia        # 仅 API 表面
+cargo build -p velox-renderer --features skia-native  # 真正的实现
+```
+
+<Callout type="danger" title="Windows 和 macOS 尚不支持">
+GPU 路径目前在非 unix 目标上无法编译。桩实现 `SkiaGlContext` 缺少
+`into_direct_context`，而 `skia_surface.rs` 调用了只存在于 unix 实现中的
+`create_context_from_winit`。迄今为止所有验证都在 Linux 上进行，所以这个问题
+一直没被发现。见[路线图](/zh/docs/roadmap)。
+</Callout>
+
+## 验证
+
+```bash
+velox init smoke-test
+cd smoke-test
+velox lint src/
+velox run
+```
+
+如果窗口打开了，安装就没问题。删掉目录，继续看
+[快速开始](/zh/docs/quick-start)。
+
+## 编辑器支持
+
+`.vx` 文件的语法高亮随本仓库提供：VS Code 的 TextMate 语法、
+Zed 的语言配置与高亮查询、Neovim 的语法与文件类型检测。

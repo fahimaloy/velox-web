@@ -1,0 +1,123 @@
+---
+title: Installation
+description: Install the CLI, build from source, and verify the toolchain on your platform.
+order: 2
+section: start
+readingMinutes: 5
+---
+
+Velox ships as a cargo binary. There is no `curl | sh` installer and no
+prebuilt binary release; you build it from a clone.
+
+<Callout type="warning" title="Requires Rust 1.85 or newer">
+Velox uses Rust 2024 edition features, including the match-ergonomics changes
+and `gen`-adjacent syntax that earlier editions reject. An older toolchain
+fails at the first `Cargo.toml` parse, not deep in a build.
+</Callout>
+
+## Prerequisites
+
+You need Rust and a C toolchain. Skia is a C++ library, so a C++ compiler is
+not optional once `skia-native` is enabled.
+
+```bash
+rustup --version
+cargo --version
+```
+
+On each platform:
+
+| Platform | You need |
+| --- | --- |
+| Linux | `build-essential`, `pkg-config`, `libssl-dev` |
+| macOS | Xcode Command Line Tools (`xcode-select --install`) |
+| Windows | Microsoft C++ build tools |
+
+## Build from source
+
+Clone the repository and build the workspace:
+
+```bash
+git clone https://github.com/fahimaloy/velox.git
+cd velox
+cargo build --workspace
+```
+
+Run the tests while you are there — a full baseline is 944 passing tests:
+
+```bash
+cargo test --workspace --no-fail-fast
+```
+
+## Install the CLI
+
+```bash
+cargo install --path velox-cli --force
+```
+
+The binary lands in `~/.cargo/bin/velox`. Confirm it is on your `PATH`:
+
+```bash
+velox version
+```
+
+Expected output:
+
+```text
+velox 0.1.0
+Edition: 2024
+Platform: Linux
+```
+
+<Callout type="tip" title="No global install? Use an alias">
+You do not have to install anything. `cargo run -p velox-cli -- <command>`
+works from inside a clone, and an alias makes it feel installed:
+
+```bash
+alias velox='cd /path/to/velox && cargo run -p velox-cli --'
+```
+</Callout>
+
+## Choose a renderer backend
+
+The renderer crate builds **nothing** by default. You opt in explicitly, which
+is deliberate: the native Skia backend is a heavy dependency tree, and you
+should not pay for it to run a linter or a unit test.
+
+```bash
+# API surface only, no native dependencies
+cargo build -p velox-renderer --features skia
+
+# The real thing: native Skia, EGL, softbuffer
+cargo build -p velox-renderer --features skia-native
+```
+
+<Callout type="danger" title="Windows and macOS are not yet supported">
+The GPU path does not compile on non-unix targets today. The stub
+`SkiaGlContext` is missing `into_direct_context`, and `skia_surface.rs` calls
+`create_context_from_winit`, which only exists in the unix implementation.
+Every gate so far has run on Linux, so this went unnoticed. Track it on the
+[roadmap](/docs/roadmap).
+</Callout>
+
+## Verify
+
+Scaffold a throwaway project and run it:
+
+```bash
+velox init smoke-test
+cd smoke-test
+velox lint src/
+velox run
+```
+
+If a window opens, your install is good. Delete the directory and continue to
+the [quick start](/docs/quick-start).
+
+## Editor support
+
+Syntax highlighting for `.vx` files ships in this repository:
+
+- VS Code — a TextMate grammar under `extensions/vscode`
+- Zed — language configuration and highlight queries under `extensions/zed`
+- Neovim — syntax and filetype detection under `extensions/neovim`

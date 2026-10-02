@@ -1,0 +1,166 @@
+---
+title: Styling and layout
+description: The properties that are recognised, the selectors that match, and what the cascade does.
+order: 12
+section: guide
+readingMinutes: 9
+---
+
+Velox implements a subset of CSS: enough Flexbox for real layout, a property
+set that covers what an app needs, and a cascade that is simpler than CSS's.
+
+<Callout type="warning" title="The cascade has no specificity and no !important">
+Rules apply in source order and the **last** matching rule for a property wins.
+Ordering is the entire override mechanism. Two consequences: appending a rule
+later always wins regardless of how specific it looks; and a "more specific"
+selector with no `!important` support cannot rescue you. Plan your stylesheets
+base-first, overrides-last.
+</Callout>
+
+## Selectors
+
+Supported:
+
+| Selector | Works | Notes |
+| --- | --- | --- |
+| `type` | Yes | |
+| `.class` | Yes | |
+| `#id` | Yes | |
+| `[attr]` | Yes | |
+| `[attr="value"]` | Yes | **Exact string only** |
+| `.a .b` | Yes | Descendant |
+| `.a > .b` | Yes | Child |
+| `.a, .b` | Yes | Group |
+
+<Callout type="danger" title="These do not exist">
+- **Sibling combinators** `+` and `~`. They do not parse as combinators — the
+  `+` is read as part of a tag name, so `.a + .b` becomes a selector for a tag
+  literally named `+` that matches nothing. No error, no warning.
+- **`:has()`**, attribute operators `~=` `^=` `$=` `|=`, and `:is()`.
+- **Pseudo-elements** including `::before` and `::placeholder`.
+- **Pseudo-classes** are limited to `:hover`, and even that is narrow — see
+  below.
+</Callout>
+
+## :hover is narrower than you think
+
+A node matches `:hover` only if it has an `on:click` attribute, is a `<button>`
+tag, or has the literal class `btn`. Nothing else.
+
+So this works:
+
+```html
+<button class="btn" @click="close">×</button>
+```
+
+and this does not:
+
+```html
+<div class="modal__close" @click="close">×</div>  <!-- only if not .btn -->
+```
+
+<Callout type="note" title="The workaround">
+Give the element `class="btn"`, or make it a `<button>`. That is the whole
+rule. This is not a style-system limitation to work around in CSS — it is a
+hit-testing condition in the renderer, and it will not change by writing a
+different selector.
+</Callout>
+
+## Layout
+
+Flexbox is the layout model. Grid is not implemented.
+
+```css
+.app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0f172a;
+}
+```
+
+Recognised for Flexbox containers: `flex-direction`, `flex-wrap`,
+`justify-content`, `align-items`, `align-self`, `align-content`, `flex`,
+`flex-grow`, `flex-shrink`, `flex-basis`, `order`, `gap`.
+
+Also implemented: `width`, `height`, `min-*`, `max-*`, `margin`, `padding`,
+`border`, `border-radius`, `background`, `color`, `font-family`,
+`font-size`, `font-weight`, `text-align`, `line-height`, `opacity`, `overflow`,
+`position`, `top`/`right`/`bottom`/`left`, `z-index`, `display`.
+
+<Callout type="danger" title="grid, float and inline-block are not implemented">
+`display: grid` parses as a valid value and then does nothing — the element
+falls back to block flow. There is no silent fallback warning. Use Flexbox.
+</Callout>
+
+## Absolute and fixed positioning
+
+Both work, and this is the overlay mechanism:
+
+```css
+.modal {
+    position: fixed;
+    left: 0; top: 0;
+    width: 100vw; height: 100vh;
+    z-index: 100;
+}
+```
+
+`z-index` only takes effect when `position` is not `static`. Out-of-flow
+children also paint after in-flow siblings, so a fixed panel with a z-index
+lands above.
+
+<Callout type="warning" title="Three limits worth knowing">
+1. The z-index sort is **per-parent**. A modal nested inside a sidebar will not
+   outrank a later sibling of that sidebar. This is why an overlay must be a
+   top-level sibling, not nested in a panel.
+2. An `overflow: hidden` ancestor **clips** a fixed descendant.
+3. There is no portal or teleport, so you cannot escape either limit by
+   re-parenting.
+</Callout>
+
+## Inputs have no intrinsic size
+
+```css
+/* UA default — from velox-style's ua.css */
+input {
+    padding: 8px 10px;
+    min-height: 34px;
+}
+```
+
+<Callout type="note" title="Why this matters">
+`<input>` is `display: block` with no children, so its content height is zero.
+Without a UA rule, an auto-height input is exactly
+`padding-top + padding-bottom + border-top + border-bottom` — a 22px field
+from `padding: 10px 12px; border: 1px`. The UA stylesheet exists to give
+inputs a usable default; overriding it entirely without setting a height gets
+you the thin field back.
+</Callout>
+
+## Dark mode
+
+There is no `prefers-color-scheme`, no custom properties, and no `var()`.
+
+```html
+<template>
+  <div :class="{ dark: is_dark }">…</div>
+</template>
+```
+
+```css
+.app { background: #ffffff; color: #111111; }
+.app.dark { background: #0b0e14; color: #e6e6e6; }
+```
+
+<Callout type="danger" title="@media is worse than unsupported">
+`@media` preludes are **never evaluated**. Inner rules are flattened into the
+sheet unconditionally. So `@media (prefers-color-scheme: dark) { … }` applies
+in *both* modes — the dark values win in light mode too. This fails silently
+and looks like the media query "worked" in one mode.
+
+Likewise `var(--x)` is inert: there is no substitution step and the linter does
+not flag it. A `var()` reference renders as nothing, not as your colour.
+</Callout>

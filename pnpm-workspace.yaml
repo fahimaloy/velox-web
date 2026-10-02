@@ -1,0 +1,31 @@
+# pnpm 11 reads settings from here, NOT from the `pnpm` field in package.json.
+#
+# `allowBuilds` replaces the old `onlyBuiltDependencies`. Each entry is an
+# explicit allow/deny decision for a package that ships a build script:
+#
+#   @swc/core      true  — Next 16's SWC compiler. Its postinstall builds the
+#                           native binding; without it `next build` cannot
+#                           transpile at all.
+#   @parcel/watcher true — native file watcher used by `next dev`. Purely a
+#                           DX dependency; the build works without it.
+#   sharp          false — not used. next/image is `unoptimized` under static
+#                           export, so no image processing happens.
+#   unrs-resolver  false — not used; a transitive dep that has not been
+#                           observed to need a build script.
+#
+# This is an allowlist, not a blanket `pnpm approve-builds`: each package is a
+# decision, and anything new fails loudly rather than running silently.
+allowBuilds:
+  "@parcel/watcher": true
+  "@swc/core": true
+  sharp: false
+  unrs-resolver: false
+
+# pnpm 10.16+ can delay installing packages newer than N days, which guards
+# against a compromised release landing in a fresh install. These are excluded
+# by exact version because they are the current release we have verified.
+minimumReleaseAgeExclude:
+  - framer-motion@13.5.0
+  - motion-dom@13.5.0
+  - motion-utils@13.5.0
+  - motion@13.5.0

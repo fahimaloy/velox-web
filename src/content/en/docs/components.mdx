@@ -1,0 +1,152 @@
+---
+title: Components and props
+description: Props, emits, slots, and how a parent composes a child component.
+order: 14
+section: guide
+readingMinutes: 7
+---
+
+Components are `.vx` files. The parent imports the child; codegen inlines the
+child's VNode tree into the parent's at build time.
+
+## Props
+
+The child declares them in a `Props` struct:
+
+```html
+<script setup>
+pub struct Props {
+    pub value: String,
+    pub placeholder: String,
+}
+
+pub struct State {
+    pub props: Props,
+}
+</script>
+```
+
+The parent binds them:
+
+```html
+<TodoInput :value="draft" :placeholder="input_placeholder" />
+```
+
+Bound attributes are **stringified** during codegen:
+
+```html
+<!-- becomes the literal string "todo" -->
+<span class="kind" :static-value="'todo'">…</span>
+```
+
+<Callout type="danger" title="Function props are impossible today">
+Every bound prop goes through `to_string()`. Passing a handler as a prop —
+`<Confirm :on_confirm="handler" />` — compiles and silently does nothing. There
+is no function-typed prop path. Use a `@`-event with a fixed handler name
+instead, and resolve the intent inside the child from its own state.
+</Callout>
+
+## Emits
+
+```html
+<script setup>
+define_emits! {
+    confirm, cancel
+}
+</script>
+```
+
+```rust
+self.emit("confirm", &payload);
+```
+
+<Callout type="danger" title="emit() compiles and does nothing">
+The generated `emit()` looks the callback name up and discards the result:
+
+```rust
+pub fn emit(event: &str, payload: &str) {
+    if let Some(_handler_name) = super::emit(event, payload) {
+        // The handler will be invoked via the parent's on_event dispatcher.
+    }
+}
+```
+
+The name is bound, the body is a no-op. So `<Confirm @confirm="…">` is inert.
+Workaround: bind the behaviour directly to the child with a `@` attribute, and
+have the parent own the state.
+</Callout>
+
+## How the parent reaches the child
+
+```rust
+pub struct State {
+    pub todoinput: Arc<super::todoinput::script_rs::State>,
+}
+```
+
+The generated module path is derived from the **sanitised file stem** plus the
+fixed name `script_rs`:
+
+| File | Module path |
+| --- | --- |
+| `TodoInput.vx` | `super::todoinput::script_rs` |
+| `todo_list.vx` | `super::todo_list::script_rs` |
+| `my-thing.vx` | `super::my_thing::script_rs` |
+
+Hyphens become underscores. You will meet this path in every type error
+involving a child component's state.
+
+<Callout type="warning" title="Name collisions are not detected">
+`sanitize_mod_name` maps `TodoInput.vx` and `todo_input.vx` to different
+modules, but `Todo-Input.vx` and `Todo_Input.vx` both sanitise to
+`Todo_Input`. Two files that differ only in punctuation collide, and the
+failure is a confusing duplicate-module error rather than a clear message.
+</Callout>
+
+## Slots
+
+```html
+<template>
+  <Modal :open="is_open">
+    <div slot="footer">…</div>
+  </Modal>
+</template>
+```
+
+<Callout type="warning" title="Only the default slot exists">
+The producer always emits the key `"default"`. There is no `v-slot:` grammar and
+no named-slot dispatch, so `slot="footer"` misses and whatever fallback the
+slot declares renders instead. Named slots are a documented future extension,
+not a current feature.
+</Callout>
+
+## Composition rules that bite
+
+<Callout type="warning" title="Slot content carries the parent's scope">
+Slot content is emitted in the **parent's** render function, so it gets the
+parent's `data-v-<hash>`. A child's scoped CSS therefore **cannot** style
+slotted content. The caller's own scoped CSS can. This is asymmetric and easy to
+misdiagnose as a broken selector.
+</Callout>
+
+## Putting it together
+
+```html
+<template>
+  <div class="todo-app">
+    <TodoInput :value="draft" @input="on_input" />
+    <FilterTabs :current="filter" @change="set_filter" />
+    <ul class="todos">
+      <li v-for="todo in filtered()" :key="todo.id" class="todo-item"
+          :class="{ completed: todo.done }">
+        <TodoItem :todo="todo" @toggle="on_toggle" @remove="on_remove" />
+      </li>
+    </ul>
+  </div>
+</template>
+```
+
+Every interaction above goes through `on:click`, `on:click-payload` or
+`on:input`. There is no emit. This is the pattern the todo example uses
+because it is the one that actually works — read
+`examples/todo/src/` for the full source.

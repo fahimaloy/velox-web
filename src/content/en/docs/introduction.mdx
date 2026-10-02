@@ -1,0 +1,110 @@
+---
+title: Introduction
+description: What Velox is, what it renders onto, and how its one frame is actually built.
+order: 1
+section: start
+readingMinutes: 6
+---
+
+Velox is a UI framework for Rust. It compiles single-file components to Rust
+code, runs a real layout engine, resolves a CSS cascade, and rasterizes the
+result through Skia onto a window you own.
+
+There is no DOM and there is no browser. That sentence is not a marketing
+position — it is the reason several things work the way they do, and several
+things are simpler than they would be with a DOM, and a few are harder.
+
+<Callout type="note" title="What this documentation will not do">
+Velox is under active stabilisation. This site documents what the code does
+**today**, measured against the source, rather than what the roadmap intends.
+Where something is planned but not implemented, it says so in those words. The
+[roadmap page](/docs/roadmap) collects every such case in one place.
+</Callout>
+
+## The one thing to understand first
+
+Most frameworks retain a tree of nodes and patch it when state changes. Velox
+does not. The render loop is **immediate-mode**:
+
+1. A signal changes.
+2. The generated `render()` function runs again and builds a **brand new**
+   `VNode` tree from scratch.
+3. Layout runs over that fresh tree.
+4. Skia paints it.
+
+There is no step 5 that compares the new tree to the old one. Nothing needs to
+diff, because nothing was kept.
+
+<Callout type="warning" title="This is not free, and it is not a bug">
+Recomputing every frame means work that a retained tree would have skipped. In
+exchange you get no stale state, no memoisation bookkeeping, no
+"why didn't this re-render" debugging, and a genuinely small codebase. Whether
+that is the right trade depends on what you are building — the
+[renderer page](/docs/renderer) explains the performance characteristics
+honestly.
+</Callout>
+
+A reconciler did once exist here. It was removed, and the reason is recorded in
+the project's own `docs/RECONCILER.md`: on a key match it returned the
+previous frame's node and discarded the incoming content, so a keyed child
+whose text had changed kept stale text. Rather than patch that, the loop was
+made honestly immediate-mode.
+
+## What a frame actually costs
+
+The five stages below are the whole pipeline. Everything else in this
+documentation is detail about one of them.
+
+<Pipeline />
+
+## The crates
+
+Velox is six independent crates, each with its own `Cargo.toml` and its own
+tests. You can depend on `velox-style` alone if that is all you want.
+
+| Crate | Owns |
+| --- | --- |
+| `velox-core` | Signals, effects, computed values, watchers, lifecycle hooks |
+| `velox-sfc` | Parsing `.vx` files and generating Rust |
+| `velox-dom` | `VNode`, the layout engine, style resolution |
+| `velox-style` | CSS parsing, selectors, the cascade |
+| `velox-renderer` | Skia backends, painting, hit testing, the event loop |
+| `velox-cli` | `init`, `build`, `dev`, `run`, `lint`, `add` |
+
+The dependency direction is strictly downward: the renderer depends on the
+DOM, which depends on style, which depends on core. Nothing depends on the CLI.
+The [architecture page](/docs/architecture) walks the boundaries in detail.
+
+## Three constraints worth knowing before you start
+
+<Callout type="danger" title="Events: exactly three">
+Velox wires three runtime event channels: `on:click`, `on:click-payload` and
+`on:input`. There is no general keybinding system yet, and no `change`,
+`mouseover` or `keydown`. An earlier draft of this site listed all of those;
+it was copied from a framework-agnostic README and was wrong. See
+[events](/docs/events).
+</Callout>
+
+<Callout type="danger" title="Cascade: last match wins">
+There is no CSS specificity and no `!important`. Rules apply in source order,
+and the last matching rule for a property wins. That makes **ordering** the
+entire override mechanism — which is fine, as long as you know it before you
+start appending rules at the bottom of a file expecting them to lose.
+</Callout>
+
+<Callout type="danger" title="Dark mode: you build it">
+There is no `prefers-color-scheme` and no `var()`. A theme is a class on the
+root element plus literal colour values. This is a consequence of the
+immediate-mode tree: there is no style-inheritance step for a custom property
+to travel through.
+</Callout>
+
+## Where to go next
+
+- **[Installation](/docs/installation)** — build the CLI and verify it works.
+- **[Quick start](/docs/quick-start)** — scaffold and run an app in five
+  commands.
+- **[Single-file components](/docs/single-file-components)** — the `.vx` file
+  format in full.
+- **[Template reference](/docs/template-reference)** — every directive and
+  attribute kind, precisely.

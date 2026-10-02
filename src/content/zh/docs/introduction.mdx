@@ -1,0 +1,93 @@
+---
+title: 简介
+description: Velox 是什么、它绘制到什么之上，以及一帧究竟是如何构建的。
+order: 1
+section: start
+readingMinutes: 6
+---
+
+Velox 是一个 Rust UI 框架。它把单文件组件编译成 Rust 代码，运行真实的布局引擎，
+解析 CSS 层叠，并通过 Skia 把结果光栅化到你自己的窗口上。
+
+这里没有 DOM，也没有浏览器。这句话不是市场说辞——它正是某些特性得以如此运作的
+原因：有些事情比有 DOM 时更简单，也有几件更困难。
+
+<Callout type="note" title="本文档不会做的事">
+Velox 仍处于稳定化阶段。本站点描述的是**今天**的代码行为，均已对照源码核实，
+而不是路线图的意图。哪里有已规划但未实现的内容，那里就会这样明说。
+[路线图页面](/zh/docs/roadmap) 把所有这类情况集中在一处。
+</Callout>
+
+## 首先需要理解的一点
+
+大多数框架会保留一棵节点树，并在状态变化时打补丁。Velox 不会。
+渲染循环是**即时模式**的：
+
+1. 一个信号变化。
+2. 生成的 `render()` 函数再次运行，从头构建一棵**全新的** `VNode` 树。
+3. 布局在这棵新树上运行。
+4. Skia 把它绘制出来。
+
+没有第 5 步去比较新旧两棵树。无需 diff，因为什么都没被保留。
+
+<Callout type="warning" title="这不是免费的，也不是 bug">
+每帧重算意味着要做保留树本可跳过的工作。作为交换，你得到的是：没有陈旧状态，
+没有 memoisation 的簿记，没有"为什么它没有重新渲染"这类调试，以及一个小得多的
+代码库。这笔交易是否划算取决于你在构建什么——[渲染器页面](/zh/docs/renderer)
+会诚实地说明性能特征。
+</Callout>
+
+这里曾经存在过一个 reconciler。它被删除了，原因记录在项目自己的
+`docs/RECONCILER.md` 中：键匹配时它返回上一帧的节点并丢弃新传入的内容，
+于是文本已改变的有键子元素仍显示陈旧文本。他们没有去修补它，而是让循环
+诚实地变成即时模式。
+
+## 一帧的真实开销
+
+下面五个阶段就是整条流水线。本文档其余一切都是其中某一个阶段的细节。
+
+<Pipeline />
+
+## 各个 crate
+
+Velox 是六个独立的 crate，各有自己的 `Cargo.toml` 和自己的测试。
+如果你只想要样式引擎，完全可以只依赖 `velox-style`。
+
+| Crate | 职责 |
+| --- | --- |
+| `velox-core` | 信号、effect、计算值、watcher、生命周期钩子 |
+| `velox-sfc` | 解析 `.vx` 文件并生成 Rust |
+| `velox-dom` | `VNode`、布局引擎、样式解析 |
+| `velox-style` | CSS 解析、选择器、层叠 |
+| `velox-renderer` | Skia 后端、绘制、命中测试、事件循环 |
+| `velox-cli` | `init`、`build`、`dev`、`run`、`lint`、`add` |
+
+依赖方向严格向下：渲染器依赖 DOM，DOM 依赖 style，style 依赖 core。
+没有任何东西依赖 CLI。[架构页面](/zh/docs/architecture) 详细讲解这些边界。
+
+## 开始前需要知道的三点限制
+
+<Callout type="danger" title="事件：只有三个">
+Velox 只接三条运行时事件通道：`on:click`、`on:click-payload` 和 `on:input`。
+目前还没有通用按键绑定系统，也没有 `change`、`mouseover` 或 `keydown`。
+本站点早期草稿里列了全部这些；那是从一份与框架无关的 README 抄来的，并且是错的。
+见[事件](/zh/docs/events)。
+</Callout>
+
+<Callout type="danger" title="层叠：最后匹配者胜">
+CSS 没有特异性，也没有 `!important`。规则按源码顺序应用，某属性的最后一条匹配
+规则获胜。这使得**顺序**成为唯一的覆盖机制——这没问题，只要你事先知道。
+</Callout>
+
+<Callout type="danger" title="深色模式：你自己搭">
+没有 `prefers-color-scheme`，也没有 `var()`。主题就是根元素上的一个类，
+加上字面的颜色值。这是即时模式树的直接后果：不存在自定义属性可以穿过的
+样式继承步骤。
+</Callout>
+
+## 接下来
+
+- **[安装](/zh/docs/installation)** —— 构建 CLI 并验证可用。
+- **[快速开始](/zh/docs/quick-start)** —— 五条命令搭起并运行一个应用。
+- **[单文件组件](/zh/docs/single-file-components)** —— `.vx` 文件格式全貌。
+- **[模板参考](/zh/docs/template-reference)** —— 每一条指令和属性，精确无误。

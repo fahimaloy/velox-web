@@ -1,0 +1,265 @@
+{
+  "meta": {
+    "title": "Velox — a native UI framework for Rust",
+    "titleTemplate": "%s · Velox",
+    "description": "Velox is a modular Rust UI framework: a single-file-component compiler, a layout engine, a CSS cascade and a Skia renderer that paint straight to the screen. No browser, no DOM, no runtime.",
+    "ogAlt": "The Velox homepage: a Rust UI framework rendering to a Skia raster surface"
+  },
+  "nav": {
+    "docs": "Docs",
+    "examples": "Examples",
+    "crates": "Crates",
+    "roadmap": "Roadmap",
+    "github": "GitHub",
+    "menu": "Menu",
+    "openMenu": "Open navigation menu",
+    "closeMenu": "Close navigation menu",
+    "primary": "Primary"
+  },
+  "theme": {
+    "label": "Theme",
+    "toggle": "Toggle colour theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "label": "Language",
+    "select": "Select language",
+    "current": "Current language: {name}"
+  },
+  "install": {
+    "title": "Install the CLI",
+    "description": "Velox ships as a cargo binary. Build it from source, or install it into your cargo bin directory.",
+    "fromSource": "From a clone of the repository",
+    "published": "Once published to crates.io",
+    "copy": "Copy command",
+    "copied": "Copied"
+  },
+  "hero": {
+    "eyebrow": "Rust · SFC compiler · Skia · No DOM",
+    "titleLine1": "A UI framework",
+    "titleLine2": "that paints pixels,",
+    "titleAccent": "not a tree.",
+    "lede": "Velox compiles single-file components to Rust, runs a real layout engine, resolves a CSS cascade, and rasterizes the result through Skia. There is no DOM and no browser — just a tree, a layout pass, and pixels on a surface you own.",
+    "ctaPrimary": "Read the docs",
+    "ctaSecondary": "View on GitHub",
+    "statCrates": "crates, each usable alone",
+    "statLoc": "lines of Rust",
+    "statTests": "integration tests",
+    "statBackends": "renderer backends"
+  },
+  "pipeline": {
+    "title": "One frame, end to end",
+    "description": "A signal changes. Everything below re-runs on the next frame — there is no retained tree to diff against, because there is no tree to retain.",
+    "stages": {
+      "signal": {
+        "name": "Signal",
+        "desc": "State changes; dependent effects are queued."
+      },
+      "render": {
+        "name": "Render",
+        "desc": "The generated render() builds a fresh VNode tree."
+      },
+      "style": {
+        "name": "Resolve style",
+        "desc": "The stylesheet resolves onto the tree. Last match wins."
+      },
+      "layout": {
+        "name": "Layout",
+        "desc": "Block and flex layout compute geometry for the viewport."
+      },
+      "paint": {
+        "name": "Paint",
+        "desc": "Skia rasterizes into a reused surface, then presents."
+      }
+    },
+    "note": "Every stage runs from scratch on every frame. Nothing is diffed against the previous frame."
+  },
+  "features": {
+    "title": "What Velox is",
+    "description": "The parts that exist today, measured from the source rather than from the roadmap.",
+    "items": {
+      "sfc": {
+        "title": "Single-file components",
+        "body": "A .vx file holds a template, a script setup block and a style block. velox-sfc parses it and generates plain Rust render functions — no runtime compiler, no eval, nothing interpreted at run time."
+      },
+      "reactivity": {
+        "title": "Signals and effects",
+        "body": "Signal, effect, computed, watch and next_tick cover the reactive primitives. State is Rc<Signal<T>>, which makes it !Send by construction: Velox is one thread per window, on purpose."
+      },
+      "layout": {
+        "title": "A real layout engine",
+        "body": "Block and flexbox layout, margins and padding, intrinsic and constrained sizing, absolute and fixed positioning, z-index and stacking contexts, overflow clipping and scroll offsets."
+      },
+      "style": {
+        "title": "A CSS cascade",
+        "body": "Around 120 properties, descendant and attribute selectors, and inline style synthesis. There is no specificity and no !important — source order decides, so ordering is the override mechanism."
+      },
+      "render": {
+        "title": "Skia rendering",
+        "body": "A CPU raster surface, reused across frames, presented through softbuffer. The raster path is deliberate: it keeps rendered bytes deterministic, which is what makes the pixel tests possible."
+      },
+      "events": {
+        "title": "Events and input",
+        "body": "Click, input and explicit payloads, hit-tested against paint order and stacking. Text fields get real caret geometry, editing keys, and cross-frame focus preservation."
+      },
+      "cli": {
+        "title": "A developer CLI",
+        "body": "velox init scaffolds a project, velox dev watches and rebuilds, velox lint checks .vx files, velox add writes a new component. The dev server is a full process rebuild — not hot state replacement."
+      },
+      "tooling": {
+        "title": "Editor support",
+        "body": "Syntax highlighting for .vx in VS Code, Zed and Neovim, shipped in this repository."
+      }
+    }
+  },
+  "crates": {
+    "title": "Six crates, independently usable",
+    "description": "Each crate has its own Cargo.toml and its own tests. Nothing in the list depends on the whole.",
+    "columns": {
+      "crate": "Crate",
+      "role": "Role",
+      "loc": "Lines"
+    },
+    "locNote": "Line counts measured from the source tree at the time of writing; they move.",
+    "footnote": "The renderer crate defaults to building nothing — you opt into a backend explicitly."
+  },
+  "showcase": {
+    "title": "A component, end to end",
+    "description": "This is a real .vx file from examples/todo. The template, the reactive state, and the scoped stylesheet all live in one file — and the compiler turns it into ordinary Rust.",
+    "tabs": {
+      "component": "TodoInput.vx",
+      "generated": "Generated Rust",
+      "usage": "Usage"
+    },
+    "generatedNote": "Simplified for readability. The real output also carries make_resolve, make_on_event and the scoped-CSS transform."
+  },
+  "examples": {
+    "title": "Runnable examples",
+    "description": "Three example programs live in the workspace. Build and run any of them with one command.",
+    "run": "Run",
+    "items": {
+      "counter": {
+        "name": "counter",
+        "desc": "Signals, computed text, v-model on a text field, and buttons wired straight to state methods."
+      },
+      "todo": {
+        "name": "todo",
+        "desc": "Components with props and emits, v-for over a filtered list, and a filter cycle across all, active and done."
+      },
+      "showcase": {
+        "name": "showcase",
+        "desc": "A layout gallery: centring, spacing, flex row and column, scrolling containers and text alignment."
+      }
+    }
+  },
+  "nonGoals": {
+    "title": "What it does not do",
+    "description": "Stating the boundaries plainly is more useful than a feature list that overreaches.",
+    "items": {
+      "hotReload": "No hot state replacement. velox dev watches files and performs a full rebuild and restart — editing a component restarts the process.",
+      "reconciliation": "No virtual-DOM diffing in the render loop. The reconciler that once existed was removed; the loop is immediate-mode and compute_layout runs fresh each frame.",
+      "key": "The :key attribute is a plain string attribute. It does not reorder, diff, or preserve state across a reorder.",
+      "media": "Dark mode is app-level. There is no prefers-color-scheme and no var() — a theme is a class on the root plus literal palettes.",
+      "events": "Three runtime event channels exist: on:click, on:click-payload and on:input. There is no general keybinding system yet.",
+      "gpu": "No GPU backend. The render target is a CPU raster surface, on purpose, to keep rendering deterministic."
+    }
+  },
+  "cta": {
+    "title": "Start with the quick start",
+    "description": "Scaffold a project, run it, then read the SFC reference when you need it.",
+    "button": "Get started"
+  },
+  "footer": {
+    "tagline": "A native UI framework for Rust.",
+    "builtWith": "Built with Next.js",
+    "license": "MIT licensed",
+    "source": "Source",
+    "docs": "Documentation",
+    "crates": "Crates",
+    "project": "Project"
+  },
+  "search": {
+    "label": "Search the documentation",
+    "placeholder": "Search docs…",
+    "noResults": "No pages match that query.",
+    "resultsCount": "{count, plural, =0 {No results} one {# result} other {# results}}",
+    "hint": "Press / to search",
+    "clear": "Clear search",
+    "results": "{count} results",
+    "empty": "No pages match that search."
+  },
+  "docs": {
+    "onThisPage": "Contents",
+    "editPage": "View source",
+    "previous": "Previous",
+    "next": "Next",
+    "fallbackNotice": "This page has not been translated yet, so it is shown in English.",
+    "fallbackNoticeShort": "Not yet translated",
+    "missingTitle": "Page not found",
+    "missingBody": "The page you asked for does not exist in this locale. It may have moved, or it may not have been written yet.",
+    "goHome": "Back to the homepage",
+    "browseAll": "Browse all documentation",
+    "copyPage": "Copy page URL",
+    "readingTime": "{minutes} min read"
+  },
+  "callout": {
+    "note": "Note",
+    "tip": "Tip",
+    "warning": "Warning",
+    "danger": "Heads up",
+    "info": "Info",
+    "planned": "Planned"
+  },
+  "code": {
+    "copy": "Copy code",
+    "copied": "Copied",
+    "viewSource": "View source"
+  },
+  "form": {
+    "title": "Get in touch",
+    "description": "Found a bug, or want to help? Open an issue — it is the fastest route to a maintainer.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "messageLabel": "Message",
+    "messagePlaceholder": "What would you like to tell us?",
+    "submit": "Send",
+    "submitting": "Sending…",
+    "success": "Thanks — this demo form is validated client-side only, so nothing was actually sent.",
+    "errors": {
+      "email": "Enter a valid email address.",
+      "messageMin": "Please write at least 20 characters so we can help.",
+      "messageMax": "Please keep it under 2000 characters."
+    },
+    "characterCount": "{count} / {max}"
+  },
+  "a11y": {
+    "skipToContent": "Skip to content",
+    "openSidebar": "Open documentation navigation",
+    "closeSidebar": "Close documentation navigation",
+    "toggleTheme": "Toggle theme",
+    "externalLink": "opens in a new tab"
+  },
+  "directiveTable": {
+    "directive": "Directive",
+    "implemented": "Implemented",
+    "yes": "Yes",
+    "no": "No",
+    "notes": {
+      "if": "Conditionally renders the element.",
+      "elseIf": "Must directly follow a v-if.",
+      "else": "Must directly follow v-if / v-else-if.",
+      "for": "Clones the element per iteration.",
+      "show": "Toggles display; the node stays.",
+      "model": "Parses and lints clean, then does nothing.",
+      "slot": "Not in the grammar at all."
+    }
+  },
+  "docsIndex": {
+    "title": "Documentation",
+    "description": "Everything about Velox, verified against the source rather than the roadmap.",
+    "coverage": "{translated} of {total} pages are translated into this language. Untranslated pages are shown in English.",
+    "readingTime": "{minutes} min read"
+  }
+}

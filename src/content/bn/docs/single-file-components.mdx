@@ -1,0 +1,87 @@
+---
+title: সিঙ্গেল-ফাইল কম্পোনেন্ট
+description: একটি .vx ফাইলের গঠন: টেমপ্লেট, স্ক্রিপ্ট সেটআপ, এবং স্কোপড স্টাইলশিট।
+order: 10
+section: guide
+readingMinutes: 8
+---
+
+একটি Velox কম্পোনেন্ট হলো `.vx` দিয়ে শেষ হওয়া একটি ফাইল, যেখানে সর্বোচ্চ
+তিনটি ব্লক থাকে। তিনটিই ঐচ্ছিক, তবে শুধু টেমপ্লেট-এর কম্পোনেন্ট স্ট্যাটিক।
+
+## তিনটি ব্লক
+
+```html
+<template>…</template>
+<script setup>…</script>
+<style scoped>…</style>
+```
+
+ব্লকগুলো যেকোনো ক্রমে থাকতে পারে। পার্সার সেগুলো অবস্থান নয়, ট্যাগ দিয়ে
+চিনে।
+
+## টেমপ্লেট সিনট্যাক্স
+
+```html
+{{ expr }}              <!-- ইন্টারপোলেশন -->
+:prop="expr"            <!-- বাইন্ডিং -->
+@event="handler"        <!-- ইভেন্ট -->
+```
+
+```html
+<template>
+  <h1>{{ title() }}</h1>
+  <img :src="user.avatar()" />
+  <button @click="increment">+1</button>
+</template>
+```
+
+<Callout type="note" title="বন্ধনী ছাড়া হয় না">
+`{{ title() }}` অ্যাক্সেসর কল করে। `{{ title }}` হলো State-এর বিপরীতে
+একটি পাথ, এবং এটি একটি **কম্পাইল এরর**, কারণ কম্পোনেন্টের টেমপ্লেট
+ফিল্ড নয়, মেথডের মাধ্যমে ডেটা পড়ে। এটি সবচেয়ে সাধারণ প্রথম ভুল।
+</Callout>
+
+## স্কোপড স্টাইল
+
+```html
+<style scoped>
+.todo-item { display: flex; }
+</style>
+```
+
+`scoped` প্রতিটি কম্পাউন্ড সিলেক্টরে একটি তৈরি `[data-v-<hash>]` যোগ করে।
+
+<Callout type="warning" title="স্কোপিং ফাঁদ">
+সিলেক্টরটি **সবচেয়ে বাম** কম্পাউন্ডেও যোগ হয়। তাই `.dark .todo-item`
+লেখা হলে সেটি `.dark[data-v-APP] .todo-item[data-v-APP]` হয়ে যায়।
+
+একটি child কম্পোনেন্টের এলিমেন্টগুলো **child-এর** হ্যাশ বহন করে, কখনও
+parent-এর নয়। তাই সেই নিয়ম কখনও মিলবে না। এটি specificity সমস্যা নয়,
+কাঠামোগতভাবে অসম্ভব।
+</Callout>
+
+## কম্পোনেন্ট সংযোগ
+
+```html
+<TodoInput :value="draft" @input="on_input" />
+```
+
+```rust
+pub struct State {
+    pub todoinput: Arc<super::todoinput::script_rs::State>,
+}
+```
+
+<Callout type="danger" title="Emits বর্তমানে কাজ করে না">
+`define_emits` পার্স ও টাইপচেক করে, `emit()` কল কম্পাইল করে। কিন্তু রানটাইম
+কলব্যাকটি খুঁজে বের করে ফেলে দেয়, তাই child-এর `emit('confirm')` কিছুই
+ডাকে না।
+</Callout>
+
+## স্লট
+
+<Callout type="warning" title="নামযুক্ত স্লট বাস্তবায়িত নয়">
+শুধু ডিফল্ট স্লট সমাধান হয়। `v-slot:` ব্যাকরণ নেই এবং নামযুক্ত স্লট
+ডিসপ্যাচ নেই, তাই `slot="footer"` মিস করে ফলে।
+</Callout>

@@ -1,0 +1,92 @@
+---
+title: ইনস্টলেশন
+description: CLI ইনস্টল করুন, সোর্স থেকে বিল্ড করুন, এবং আপনার প্ল্যাটফর্মে টুলচেইন যাচাই করুন।
+order: 2
+section: start
+readingMinutes: 5
+---
+
+Velox একটি cargo বাইনারি হিসেবে আসে। কোনো `curl | sh` ইনস্টলার নেই এবং
+প্রি-বিল্ট বাইনারি রিলিজও নেই; আপনি একটি ক্লোন থেকে এটি বিল্ড করেন।
+
+<Callout type="warning" title="Rust 1.85 বা তার নতুন প্রয়োজন">
+Velox Rust 2024 এডিশনের ফিচার ব্যবহার করে, যেগুলোর মধ্যে match-ergonomics
+পরিবর্তন রয়েছে। পুরোনো টুলচেইন প্রথম `Cargo.toml` পার্সেই ব্যর্থ হয়, গভীরে
+কোথাও নয়।
+</Callout>
+
+## পূর্বশর্ত
+
+আপনার Rust এবং একটি C টুলচেইন দরকার। Skia একটি C++ লাইব্রেরি, তাই
+`skia-native` চালু করলে C++ কম্পাইলার আর বাধ্যতামূলক।
+
+| প্ল্যাটফর্ম | যা লাগবে |
+| --- | --- |
+| Linux | `build-essential`, `pkg-config`, `libssl-dev` |
+| macOS | Xcode Command Line Tools (`xcode-select --install`) |
+| Windows | Microsoft C++ build tools |
+
+## সোর্স থেকে বিল্ড
+
+```bash
+git clone https://github.com/fahimaloy/velox.git
+cd velox
+cargo build --workspace
+cargo test --workspace --no-fail-fast
+```
+
+## CLI ইনস্টল
+
+```bash
+cargo install --path velox-cli --force
+```
+
+বাইনারি যায় `~/.cargo/bin/velox`-এ।
+
+```bash
+velox version
+```
+
+প্রত্যাশিত আউটপুট:
+
+```text
+velox 0.1.0
+Edition: 2024
+Platform: Linux
+```
+
+<Callout type="tip" title="গ্লোবাল ইনস্টল ছাড়াই">
+আপনাকে কিছু ইনস্টল করতেই হবে না। ক্লোনের ভিতর থেকে
+`cargo run -p velox-cli -- <command>` কাজ করে।
+</Callout>
+
+## রেন্ডারার ব্যাকএন্ড বেছে নিন
+
+রেন্ডারার ক্রেট ডিফল্টভাবে **কিছুই** বিল্ড করে না। আপনি স্পষ্টভাবে
+অপশন চালু করেন, যা সচেতনভাবে করা: নেটিভ Skia ব্যাকএন্ড একটি ভারী
+নির্ভরতা ট্রি, এবং শুধু একটি লিন্টার বা ইউনিট টেস্ট চালাতে সেটির
+দাম দিতে হবে না।
+
+```bash
+cargo build -p velox-renderer --features skia        # শুধু API
+cargo build -p velox-renderer --features skia-native  # আসল জিনিস
+```
+
+<Callout type="danger" title="Windows ও macOS এখনও সমর্থিত নয়">
+GPU পাথ আজ non-unix টার্গেটে কম্পাইল হয় না। স্টাব `SkiaGlContext`-এ
+`into_direct_context` নেই, এবং `skia_surface.rs` `create_context_from_winit`
+কল করে যা শুধু unix ইমপ্লিমেন্টেশনে আছে। এতদিনের সব গেট Linux-এ চলেছে,
+তাই এটি চোখ এড়িয়ে গেছে।
+</Callout>
+
+## যাচাই
+
+```bash
+velox init smoke-test
+cd smoke-test
+velox lint src/
+velox run
+```
+
+একটি উইন্ডো খুললে আপনার ইনস্টল ঠিক আছে। ডিরেক্টরি মুছে
+[দ্রুত শুরু](/bn/docs/quick-start)-এ যান।

@@ -1,0 +1,149 @@
+---
+title: 快速开始
+description: 搭建一个项目、运行它，并理解交给你的那三个文件。
+order: 3
+section: start
+readingMinutes: 7
+---
+
+五条命令，从零到一个运行中的窗口。
+
+## 搭建
+
+```bash
+velox init my-app
+cd my-app
+```
+
+`init` 会写出一个完整的 cargo 项目。
+
+```
+my-app/
+├── Cargo.toml
+├── build.rs          # 在 crate 构建前把 src/App.vx 编译进 OUT_DIR
+├── assets/
+└── src/
+    ├── App.vx        # 你的组件
+    └── main.rs       # 打开窗口并运行事件循环
+```
+
+<Callout type="note" title="构建脚本不是可选的">
+`build.rs` 对 `src/App.vx` 调用 `velox_cli::build_cmd(...)`，把生成的 Rust
+写入 `OUT_DIR`。因为它为读到的每个 `.vx` 文件发出 `cargo:rerun-if-changed`，
+编辑组件能正确触发重建——**包括**编辑被导入的组件，而这正是朴素做法会搞错的情况。
+</Callout>
+
+## 先检查，再运行
+
+```bash
+velox lint src/
+velox run
+```
+
+## 三个文件
+
+### `src/App.vx`
+
+```html
+<template>
+  <div class="app">
+    <h1 class="title">{{ title() }}</h1>
+    <button class="btn inc" @click="increment">+1</button>
+  </div>
+</template>
+
+<script setup>
+pub struct State {
+    counter: velox_core::ergonomics::Ref<i32>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self { counter: velox_core::r#ref!(0) }
+    }
+
+    pub fn title(&self) -> String { String::from("Counter") }
+    pub fn count(&self) -> i32 { self.counter.get() }
+
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+}
+</script>
+
+<style scoped>
+.app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0f172a;
+    color: #f1f5f9;
+}
+</style>
+```
+
+注意 `title()` 和 `count()` 方法。模板调用的是 State 上的**方法**，不是裸变量——
+生成的 `render()` 每帧都通过这些访问器解析每一个插值。
+
+### `src/main.rs`
+
+```rust
+let make_view = {
+    let state = Arc::clone(&state);
+    move |w: u32, h: u32| -> (VNode, Stylesheet) {
+        let _viewport = (w, h);
+        let vnode = app::render_with_state(
+            Arc::clone(&state),
+            app::make_resolve(Arc::clone(&state)),
+        );
+        (vnode, Stylesheet::parse(app::STYLE))
+    }
+};
+```
+
+<Callout type="warning" title="你的视图函数必须使用 (w, h)">
+`make_view` 会以当前**逻辑**视口尺寸被调用。如果你的闭包忽略它们，
+应用在窗口缩放时不会重排——这是个真 bug，但它表现为"什么都没发生"，
+而不是报错。
+</Callout>
+
+### `build.rs`
+
+```rust
+fn main() {
+    let input = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/App.vx");
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    velox_cli::build_cmd(&input, Some(&out_dir), velox_cli::EmitMode::Render)
+        .expect("Failed to compile App.vx");
+}
+```
+
+## 开发循环
+
+```bash
+velox dev
+```
+
+文件变更由操作系统通知（Linux 上是 inotify），所以保存会在毫秒级被捕捉。
+`target/`、`.git` 和点目录被排除——cargo 会往 `target/` 写数千个文件，
+监视它会耗尽内核的 inotify 配额。
+
+按 `r` 手动重建，按 `q` 退出。
+
+<Callout type="danger" title="这是重建，不是热重载">
+`velox dev` 执行完整的 `cargo build` 并重启进程。你的内存状态不会在编辑后保留。
+这不是 `vite` 那种保留状态的热模块替换；不要写暗示这一点的文档。
+</Callout>
+
+## 运行真实示例
+
+```bash
+cargo run -p velox-example-counter
+cargo run -p velox-example-todo
+cargo run -p velox-example-showcase
+```
+
+todo 示例最有意思——带 props 和 emits 的组件、过滤列表上的 `v-for`、
+以及 all/active/done 的筛选循环。接下来读[组件](/zh/docs/components)。

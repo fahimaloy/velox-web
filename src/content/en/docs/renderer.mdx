@@ -1,0 +1,99 @@
+---
+title: The renderer
+description: The CPU raster surface, why it is deliberate, and what that costs you.
+order: 31
+section: internals
+readingMinutes: 6
+---
+
+Velox rasterizes with Skia. There is a GPU path, but it is opt-in and not
+finished. What ships by default is CPU.
+
+<Callout type="note" title="Not a limitation to apologise for">
+CPU rasterization is the deliberate default: it makes golden-image tests
+deterministic, keeps the build free of EGL and window-system dependencies, and
+runs identically on a headless CI machine. GPU rendering is a config flag, not
+an architectural commitment.
+</Callout>
+
+## Backends
+
+| Feature | What you get |
+| --- | --- |
+| *(none)* | API surface only; no native deps |
+| `skia` | Skia-safe types, CPU raster |
+| `skia-native` | EGL + softbuffer; a real window |
+
+## Paint order
+
+```
+1. Background and borders
+2. Descendants, in layout order
+3. Text, glyphs and selection
+4. The caret, when a field is focused
+```
+
+Out-of-flow children (`position: absolute` / `fixed`) are appended **last**,
+so they paint above in-flow siblings regardless of document order.
+
+## Stacking contexts
+
+An element with `opacity < 1.0` creates one, and it is honoured during paint.
+An element with `position != static` plus a `z-index` sorts within its parent.
+
+<Callout type="warning" title="The z-index sort is per-parent">
+This is the overlay limit, stated precisely: a fixed overlay nested inside a
+sidebar cannot outrank a later sibling of that sidebar, because the sort never
+leaves the parent. An overlay must be a top-level sibling of the thing it
+covers. This is why the core Modal template places the backdrop at the root.
+</Callout>
+
+## Text
+
+Glyph runs are shaped per line. Wrapped lines are measured before painting, so
+`line-through` and `underline` need a measure-then-draw pass per line rather
+than a single rect across the block.
+
+The current `text-decoration` implementation handles `underline` and `none`.
+`line-through` is on the plan — the todo example's completed style currently
+declares it and the renderer does not yet paint it.
+
+<Callout type="warning" title="Authored styles for inputs are partly discarded">
+The input paint path hardcodes a white background and a `#c8c8c8` border,
+draws the border as a plain rect rather than an rrect, and paints value text
+near-black. So `background`, `color` and `border-radius` on an `<input>` are
+accepted by the CSS cascade and then ignored at paint time. Restyling an input
+requires the render-side fix first.
+</Callout>
+
+## Hit testing
+
+A click resolves to **exactly one** topmost element. There is no bubbling, no
+capture phase, and no `.stop` / `.prevent`.
+
+Hit testing also reads the **same** style map as paint — but at one point it
+looked up the literal key `padding-left` while the cascade stores the shorthand
+`padding` unexpanded. The lookup fell through to zero, so a click-to-caret
+calculation disagreed with the painted text position. Both lanes now derive
+content-box geometry from the computed style.
+
+<Callout type="note" title="This is why the docs mention a shared geometry function">
+The class of bug is "two lanes compute the same thing differently". Paint
+hardcoded `TEXT_PAD = 4.0` plus a 1px border inset; hit-testing added 0. Font
+size was 14px in paint and 16px in hit-testing. One function, used by both, is
+the fix; two patches are not.
+</Callout>
+
+## Focus and text editing
+
+While a text input is focused, the renderer owns the caret, the selection and
+the editing keys. Its default font size for that path was 16.0 while paint
+inherited 14.0 from the root — now unified on the computed value.
+
+Focus is preserved across frames by matching the element's **structural path**.
+<Callout type="warning" title="Focus is positional, not keyed">
+Because `:key` is not honoured, an `<input>` inside a reordered `v-for` hands
+its focus and caret to whichever item now occupies its index. This is the
+accepted cost of the immediate-mode loop rather than an oversight — but it is a
+real limitation, and any programmatic focus feature inherits it.
+</Callout>

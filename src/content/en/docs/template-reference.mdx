@@ -1,0 +1,146 @@
+---
+title: Template reference
+description: Directives, attribute kinds, and the exact shape of the SFC grammar.
+order: 21
+section: reference
+readingMinutes: 6
+---
+
+The precise list of what `velox-sfc` parses. Where a directive is listed as not
+implemented, it still parses and still lints clean — knowing which is which is
+the point of this page.
+
+## Directives
+
+| Directive | Implemented | Notes |
+| --- | :---: | --- |
+| `v-if` | Yes | |
+| `v-else-if` | Yes | Must directly follow a `v-if` |
+| `v-else` | Yes | Must directly follow `v-if`/`v-else-if` |
+| `v-for` | Yes | Clones the element per iteration |
+| `v-show` | Yes | Toggles `display`, keeps the node |
+| `v-model` | **No** | Parses, lints clean, does nothing |
+| `v-slot` | **No** | Not in the grammar |
+
+`v-show` is the interesting one: it sets a style rather than removing the node,
+so the element keeps its layout participation and its event bindings.
+
+## Attribute kinds
+
+```html
+<div
+  id="static"                          <!-- static string -->
+  :value="expression()"                <!-- bound, stringified -->
+  @click="handler"                     <!-- event -->
+  v-if="condition()"                   <!-- directive -->
+>
+```
+
+| Prefix | Meaning | Example |
+| --- | --- | --- |
+| none | Static text | `type="text"` |
+| `:` | Bound to a `State` expression | `:value="name()"` |
+| `@` | Event handler name | `@click="increment"` |
+| `v-` | Directive | `v-if="ok()"` |
+
+<Callout type="note" title="Bound attributes are stringified">
+`:foo="bar"` emits `foo="<to_string(bar)>"`. It is not a typed value and does
+not survive as one.
+</Callout>
+
+## Interpolation
+
+```html
+<h1>{{ title() }}</h1>
+<p>{{ user.name() }}</p>
+<p>{{ format(count()) }}</p>
+```
+
+Three shapes: a call, a dotted path, or a call inside a path. `{{ title }}` is
+not valid — the template reads data through methods.
+
+## Conditional chains
+
+```html
+<button v-if="f() == 'a'">A</button>
+<button v-else-if="f() == 'b'">B</button>
+<button v-else>C</button>
+```
+
+<Callout type="warning" title="Adjacency is resolved structurally">
+The chain is matched by sibling adjacency in the parsed template. A comment
+node or non-whitespace text between branches breaks it, and the result is that
+all branches render. Keep the three elements immediately adjacent.
+</Callout>
+
+## Comments
+
+```html
+<!-- a comment -->
+```
+
+Parsed and dropped from output. Inside a `v-if`/`v-else` chain, a comment is a
+node — see above.
+
+## Script setup
+
+```html
+<script setup>
+use velox_core::signal::Signal;
+
+pub struct State { … }
+impl State { pub fn new() -> Self { … } }
+</script>
+```
+
+The block is an ordinary Rust item, spliced into the generated module.
+
+## Style
+
+```html
+<style scoped>
+.card { display: flex; }
+</style>
+```
+
+| Form | Effect |
+| --- | --- |
+| `<style>` | Rules are global |
+| `<style scoped>` | `[data-v-<hash>]` appended to every compound |
+
+<Callout type="danger" title="A second style block silently replaces the first">
+Two `<style>` blocks in one file do not merge. The second overwrites the
+first, with no warning and no lint error. Keep one block.
+</Callout>
+
+## Full example
+
+```html
+<template>
+  <div class="todo-app">
+    <input :value="draft" @input="on_input" :placeholder="hint" />
+    <span v-show="count() > 0">{{ count() }}</span>
+    <li v-for="t in items()" :key="t.id" :class="{ done: t.done }">
+      {{ t.text }}
+    </li>
+  </div>
+</template>
+
+<script setup>
+pub struct State {
+    count: velox_core::ergonomics::Ref<i32>,
+}
+impl State {
+    pub fn new() -> Self { Self { count: velox_core::r#ref!(0) } }
+    pub fn count(&self) -> i32 { self.count.get() }
+    pub fn draft(&self) -> String { String::new() }
+    pub fn items(&self) -> Vec<Item> { Vec::new() }
+    pub fn on_input(&self, _payload: &str) {}
+}
+</script>
+
+<style scoped>
+.todo-app { display: flex; flex-direction: column; gap: 8px; }
+.done { text-decoration: line-through; }
+</style>
+```

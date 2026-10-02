@@ -1,0 +1,114 @@
+---
+title: Events and input
+description: The three runtime event channels, payloads, and how a click is resolved to a handler.
+order: 13
+section: guide
+readingMinutes: 7
+---
+
+Velox has exactly three runtime event channels. Not a general event system —
+three specific attributes that the renderer reads.
+
+<Callout type="danger" title="These three, and no others">
+- `on:click`
+- `on:click-payload`
+- `on:input`
+
+There is no `on:change`, no `on:mouseover`, no `on:keydown`, no `on:submit`,
+and no capture phase. A quick web search for this framework may tell you
+otherwise; the source is unambiguous — every runtime read of an `on:*`
+attribute is three lines long.
+</Callout>
+
+## Attaching a handler
+
+```html
+<button @click="increment">+1</button>
+```
+
+`@click="increment"` becomes `on:click="increment"`, and the root dispatcher
+calls `state.increment()`.
+
+The handler name is a **single global string** resolved at dispatch time. There
+is no per-element handler registry.
+
+## Payloads
+
+`on:click-payload` carries a string to the handler:
+
+```html
+<button @click-payload="select" :payload="filter_name">All</button>
+```
+
+```rust
+pub fn select(&self, payload: &str) {
+    self.filter.set(payload.to_string());
+}
+```
+
+`on:input` does the same for text fields, and it is the channel to use for
+every kind of input — including ones that would be a different event in the DOM:
+
+```html
+<input type="text" :value="name" @input="on_input" />
+<input type="checkbox" @input="toggle" />
+<input type="range" @input="on_slider" />
+```
+
+<Callout type="note" title="One channel covers every input type">
+Because `on:input` fires on any change to any input, a checkbox and a text
+field use the same attribute. You do not need — and cannot have — a separate
+`on:change`.
+</Callout>
+
+## Text editing
+
+While a text field has focus, the renderer consumes keys itself for cursor
+movement and text editing. Those keys do not reach your handler, because there
+is no general keybinding hook to route them through yet.
+
+<Callout type="warning" title="Esc and F2 do not reach your code">
+<kbd>Esc</kbd> and <kbd>F2</kbd> are matched by a closed `match` in
+`edit_action_for_key` with no fallthrough to user code, and a test explicitly
+asserts that `Esc` produces no action. If you are waiting for Esc-to-close or
+F2-to-edit, neither will fire. Both are tracked as open work.
+
+<kbd>Tab</kbd> is likewise inert: there is no focus traversal, and
+`autofocus` is not implemented. A text input is the only focusable thing.
+</Callout>
+
+<Callout type="danger" title="The r/q keys kill the app while you are typing">
+`r` rebuilds and `q` quits. The only guard is "is a button currently pressed" —
+there is **no focused-input check**. Typing `release` into a text field quits
+the process.
+
+This is a live bug in the current release, not a documented behaviour. The fix
+belongs in both event loops and is on the plan.
+</Callout>
+
+## How a click is resolved
+
+Hit testing walks the layout tree and resolves a click to **exactly one**
+topmost element.
+
+```html
+<div class="modal-backdrop" @click="dismiss">
+  <div class="modal-panel" @click="noop">
+    …
+  </div>
+</div>
+```
+
+The panel has its own `on:click`, so a click on it is consumed there and never
+bubbles to the backdrop. A click on the backdrop dismisses.
+
+<Callout type="warning" title="There is no .stop and no bubbling">
+`.stop` and `.prevent` are not implemented, and there are no capture phases.
+The panel-own-handler pattern above is the only way to stop a click from
+dismissing a modal. To ignore the argument entirely, use a no-op handler.
+</Callout>
+
+## What to read next
+
+- [Components and props](/docs/components) — how a child exposes behaviour.
+- [Template reference](/docs/template-reference) — every directive, exactly.

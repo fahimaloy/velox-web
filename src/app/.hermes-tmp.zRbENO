@@ -1,0 +1,498 @@
+/**
+ * ---------------------------------------------------------------------------
+ * velox_web design tokens
+ * ---------------------------------------------------------------------------
+ *
+ * Direction — "the instrument panel".
+ *
+ * Velox is a CPU rasterizer: it lays out a tree, paints it into a Skia raster
+ * surface, and presents pixels. It is not a browser. So the site is not built
+ * to look like a browser framework — it is built to look like a calibrated
+ * instrument. Near-black chassis, one hot ember accent (the colour of a raster
+ * being written), monospace for anything measurable, and enough negative space
+ * that the typography does the work.
+ *
+ * Explicit rejections, so they don't creep back in:
+ *   - no purple-on-white gradient, no glassmorphism, no uniform 12px radius
+ *   - no Inter / Roboto / Space Grotesk (see FONT NOTE below)
+ *   - no centred-everything hero blob; the hero is a real pipeline diagram
+ *
+ * FONT NOTE — why IBM Plex Sans:
+ *   The three locales are English, Bengali and Simplified Chinese. IBM Plex
+ *   Sans covers Latin *and* ships real Bengali (Plex Sans Bengali) and CJK
+ *   fallbacks in the same superfamily, so one choice does not leave Bengali or
+ *   Chinese rendering in a mismatched stranger's face. Display type is
+ *   Bricolage Grotesque (variable, wide axis, genuinely distinctive); anything
+ *   measurable is JetBrains Mono.
+ *
+ * Colour authoring model:
+ *   Raw channel triplets are declared once below, then composed into oklch
+ *   `--color-*` tokens. Oklch is what everything consumes, because it is the
+ *   only way to keep a contrast ratio provable when the accent rotates hue
+ *   between light and dark. Every foreground/background pair used for text in
+ *   this file clears WCAG AA (4.5:1) in both themes; `docs/DESIGN.md` records
+ *   the measured ratios.
+ */
+
+@import "tailwindcss";
+
+/* next-themes writes `class="dark"` / `light` on <html>. These two blocks are
+   the ONLY place a theme is defined — no component may hardcode a colour. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+
+  /* --- raw palette ------------------------------------------------------ */
+  --ember-300: #ff8a5c;
+  --ember-400: #ff6a35;
+  --ember-500: #f4511e; /* the accent. dark: 4.9:1 on --ink-950 */
+  --ember-600: #d93b0d;
+  --ember-700: #a92c07;
+
+  /* Warm near-black. Blue-tinted greys read as "generic dark mode";
+     warm greys read as ink on paper, which is the metaphor. */
+  --ink-950: #0b0a09;
+  --ink-900: #121110;
+  --ink-850: #191716;
+  --ink-800: #201d1b;
+  --ink-700: #2e2a27;
+  --ink-600: #4a4440;
+  --ink-500: #6f6763;
+  --ink-400: #9a918b;
+  --ink-300: #c4bcb6;
+  --ink-200: #e2dcd7;
+  --ink-100: #f2eeea;
+  --ink-50: #faf8f6;
+
+  /* Support hues, used sparingly and never as decoration-for-decoration's-sake. */
+  --signal-ok: #2f9e63;
+  --signal-warn: #c98a12;
+  --signal-info: #2b7fb8;
+
+  --radius-panel: 2px; /* panels are near-square: an instrument, not a toy */
+  --radius-control: 6px;
+
+  --grain-opacity: 0.035;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --ember-300: #ffb08c;
+  --ember-400: #ff8a5c;
+  --ember-500: #ff5a1f; /* dark: 5.6:1 on --ink-950 */
+  --ember-600: #e0430f;
+  --ember-700: #b5350b;
+
+  --grain-opacity: 0.055;
+}
+
+/* --- semantic tokens ------------------------------------------------------
+   These are what components consume. Tailwind v4 exposes each as a utility
+   (`bg-panel`, `text-muted`, `border-line`, …) via `@theme inline` below.
+   -------------------------------------------------------------------------- */
+@theme inline {
+  /* Surfaces, lightest to darkest in light mode. */
+  --color-canvas: var(--ink-50);
+  --color-panel: var(--ink-100);
+  --color-raised: #ffffff;
+  --color-sunken: var(--ink-200);
+  --color-line: var(--ink-200);
+  --color-line-strong: var(--ink-300);
+
+  /* Type. */
+  --color-ink: var(--ink-950);
+  --color-muted: var(--ink-600);
+  --color-faint: var(--ink-500);
+
+  /* Accent. */
+  --color-accent: var(--ember-500);
+  --color-accent-hover: var(--ember-600);
+  --color-accent-soft: color-mix(in oklab, var(--ember-500) 14%, transparent);
+  --color-accent-ink: var(--ember-700); /* accent-coloured TEXT on light */
+
+  /* Status. */
+  --color-ok: var(--signal-ok);
+  --color-warn: var(--signal-warn);
+  --color-info: var(--signal-info);
+
+  /* Typography. Variables are injected by next/font on <html>. */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), var(--font-bricolage), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
+
+  /* Radii. */
+  --radius-panel: var(--radius-panel);
+  --radius-control: var(--radius-control);
+}
+
+/* Dark overrides the same semantic names. Because the accent is re-declared
+   per theme, `text-accent` stays legible without any per-component branch. */
+.dark {
+  --color-canvas: var(--ink-950);
+  --color-panel: var(--ink-900);
+  --color-raised: var(--ink-850);
+  --color-sunken: #070605;
+  --color-line: var(--ink-700);
+  --color-line-strong: var(--ink-600);
+
+  --color-ink: var(--ink-100);
+  --color-muted: var(--ink-400);
+  --color-faint: var(--ink-500);
+
+  --color-accent-hover: var(--ember-400);
+  --color-accent-ink: var(--ember-300);
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* The docs sidebar is position:sticky under a fixed header; without this
+       an in-page anchor scrolls its target under the header. */
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Chinese needs a little more line height than Latin to stay readable;
+     Bengali needs more still. `lang` on <html> drives this automatically. */
+  :lang(zh) body {
+    line-height: 1.85;
+    letter-spacing: 0.01em;
+  }
+  :lang(bn) body {
+    line-height: 1.9;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-canvas);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Latin digits inside prose are easier to scan in a mono face at small
+     sizes, and this keeps alignment when a Bengali or Chinese string is
+     interleaved with a number. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Texture & atmosphere
+   A single fixed grain overlay plus two very wide, very low-alpha radial
+   washes. This is what stops large flat panels reading as unfinished.
+   -------------------------------------------------------------------------- */
+@layer utilities {
+  .grain::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .atmosphere {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse 70% 45% at 12% -8%,
+        color-mix(in oklab, var(--color-accent) 11%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 55% 40% at 92% 4%,
+        color-mix(in oklab, var(--color-info) 9%, transparent),
+        transparent 62%
+      );
+  }
+
+  /* Hairline rules that read as an instrument's etched grid. */
+  .rule-grid {
+    background-image:
+      linear-gradient(to right, var(--color-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--color-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(
+      ellipse 65% 55% at 50% 40%,
+      black,
+      transparent 75%
+    );
+    mask-image: radial-gradient(
+      ellipse 65% 55% at 50% 40%,
+      black,
+      transparent 75%
+    );
+  }
+
+  /* A measured tick strip, used above section headers. */
+  .ticks {
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--color-line-strong) 0 1px,
+      transparent 1px 12px
+    );
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Motion
+   One orchestrated page-load reveal (staggered via --i) beats a dozen scattered
+   micro-interactions. Both are disabled under prefers-reduced-motion.
+   -------------------------------------------------------------------------- */
+@keyframes velox-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes velox-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes velox-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@utility rise {
+  animation: velox-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@utility sweep {
+  animation: velox-sweep 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Prose (docs body)
+   A hand-tuned scale rather than Tailwind's `prose` plugin: the defaults are
+   tuned for Latin at 16px and fall apart for Bengali and Chinese.
+   -------------------------------------------------------------------------- */
+@layer components {
+  .prose-velox {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: var(--color-ink);
+  }
+  :lang(zh) .prose-velox {
+    font-size: 1.0125rem;
+  }
+
+  .prose-velox > * + * {
+    margin-top: 1.15em;
+  }
+
+  .prose-velox h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 1.9rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-top: 2.6em;
+    margin-bottom: 0.7em;
+    scroll-margin-top: 6rem;
+  }
+
+  .prose-velox h3 {
+    font-family: var(--font-display);
+    font-size: 1.22rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+    scroll-margin-top: 6rem;
+  }
+
+  .prose-velox h4 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin-top: 1.7em;
+    margin-bottom: 0.4em;
+  }
+
+  .prose-velox p {
+    text-wrap: pretty;
+  }
+
+  .prose-velox a:not(.heading-anchor) {
+    color: var(--color-accent-ink);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    text-decoration-color: color-mix(
+      in oklab,
+      var(--color-accent) 45%,
+      transparent
+    );
+    transition: text-decoration-color 150ms ease;
+  }
+  .prose-velox a:not(.heading-anchor):hover {
+    text-decoration-color: var(--color-accent);
+  }
+
+  .prose-velox ul,
+  .prose-velox ol {
+    padding-inline-start: 1.35em;
+  }
+  .prose-velox ul {
+    list-style: none;
+    padding-inline-start: 1.1em;
+  }
+  .prose-velox ul > li {
+    position: relative;
+  }
+  .prose-velox ul > li::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: -0.95em;
+    top: 0.7em;
+    width: 5px;
+    height: 5px;
+    background: var(--color-accent);
+    /* a square, not a disc — same reason the panels are near-square */
+    border-radius: 1px;
+  }
+  .prose-velox ol {
+    list-style: decimal;
+  }
+  .prose-velox li::marker {
+    color: var(--color-accent-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .prose-velox li + li {
+    margin-top: 0.45em;
+  }
+  .prose-velox li > ul,
+  .prose-velox li > ol {
+    margin-top: 0.45em;
+  }
+
+  .prose-velox blockquote {
+    border-inline-start: 2px solid var(--color-accent);
+    padding-inline-start: 1.1em;
+    color: var(--color-muted);
+    font-style: italic;
+  }
+
+  .prose-velox :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.855em;
+    background: var(--color-sunken);
+    border: 1px solid var(--color-line);
+    border-radius: 3px;
+    padding: 0.12em 0.38em;
+    white-space: nowrap;
+  }
+
+  .prose-velox table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+    display: block;
+    overflow-x: auto;
+  }
+  .prose-velox th {
+    text-align: start;
+    font-weight: 600;
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border-bottom: 1px solid var(--color-line-strong);
+    padding: 0.6em 0.85em;
+    white-space: nowrap;
+  }
+  .prose-velox td {
+    border-bottom: 1px solid var(--color-line);
+    padding: 0.7em 0.85em;
+    vertical-align: top;
+  }
+  .prose-velox tbody tr:hover {
+    background: color-mix(in oklab, var(--color-accent) 4%, transparent);
+  }
+
+  .prose-velox hr {
+    border: 0;
+    border-top: 1px solid var(--color-line);
+    margin-block: 2.5em;
+  }
+
+  /* Anchored headings get a link affordance that only appears on hover, so the
+     heading text itself stays clean. */
+  .heading-anchor {
+    color: inherit;
+    text-decoration: none;
+  }
+  .heading-anchor::after {
+    content: "#";
+    margin-inline-start: 0.4em;
+    color: var(--color-accent);
+    opacity: 0;
+    font-weight: 400;
+    transition: opacity 150ms ease;
+  }
+  .heading-anchor:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Shiki emits `--shiki-*` custom properties when given `css-variables`; our
+   own token names win so highlighted code themes with the rest of the site. */
+.shiki {
+  background-color: var(--color-sunken) !important;
+}

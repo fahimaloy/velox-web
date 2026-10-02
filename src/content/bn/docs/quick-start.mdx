@@ -1,0 +1,140 @@
+---
+title: দ্রুত শুরু
+description: একটি প্রকল্প স্ক্যাফোল্ড করুন, চালান, এবং আপনি যে তিনটি ফাইল পাচ্ছেন তা বুঝুন।
+order: 3
+section: start
+readingMinutes: 7
+---
+
+শূন্য থেকে চলমান উইন্ডো — পাঁচটি কমান্ড।
+
+## স্ক্যাফোল্ড
+
+```bash
+velox init my-app
+cd my-app
+```
+
+## যাচাই, তারপর চালান
+
+```bash
+velox lint src/
+velox run
+```
+
+## তিনটি ফাইল
+
+### `src/App.vx`
+
+এক-ফাইল কম্পোনেন্ট: টেমপ্লেট, স্ক্রিপ্ট, স্টাইল।
+
+```html
+<template>
+  <div class="app">
+    <h1 class="title">{{ title() }}</h1>
+    <button class="btn inc" @click="increment">+1</button>
+  </div>
+</template>
+
+<script setup>
+pub struct State {
+    counter: velox_core::ergonomics::Ref<i32>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self { counter: velox_core::r#ref!(0) }
+    }
+    pub fn count(&self) -> i32 { self.counter.get() }
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+}
+</script>
+
+<style scoped>
+.app {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #0f172a;
+    color: #f1f5f9;
+}
+</style>
+```
+
+`count()` মেথডটি খেয়াল করুন। টেমপ্লেট একটি **মেথড কল করে**, খালি
+ভ্যারিয়েবল নয় — জেনারেট করা `render()` প্রতি ফ্রেমে প্রতিটি
+ইন্টারপোলেশন ওই অ্যাক্সেসরের মধ্য দিয়ে সমাধান করে।
+
+### `src/main.rs`
+
+তিনটি অংশ: একটি ভিউ ফাঙ্কশন, একটি ইভেন্ট হ্যান্ডলার, এবং একটি উইন্ডো।
+
+```rust
+let make_view = {
+    let state = Arc::clone(&state);
+    move |w: u32, h: u32| -> (VNode, Stylesheet) {
+        let _viewport = (w, h);
+        let vnode = app::render_with_state(
+            Arc::clone(&state),
+            app::make_resolve(Arc::clone(&state)),
+        );
+        (vnode, Stylesheet::parse(app::STYLE))
+    }
+};
+```
+
+<Callout type="warning" title="আপনার ভিউ ফাঙ্কশনকে (w, h) ব্যবহার করতে হবে">
+`make_view` বর্তমান **লজিক্যাল** ভিউপোর্ট সাইজ দিয়ে কল হয়। ক্লোজার সেগুলো
+উপেক্ষা করলে অ্যাপ resize-এ রিফ্লো হবে না — এটি এমন বাগ যা কোনো এরর
+হিসেবে নয়, বরং "কিছুই হচ্ছে না" হিসেবে দেখায়।
+</Callout>
+
+### `build.rs`
+
+```rust
+fn main() {
+    let input = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/App.vx");
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    velox_cli::build_cmd(&input, Some(&out_dir), velox_cli::EmitMode::Render)
+        .expect("Failed to compile App.vx");
+}
+```
+
+<Callout type="note" title="বিল্ড স্ক্রিপ্ট বাধ্যতামূলক নয়">
+`build.rs` প্রতিটি `.vx` ফাইলের জন্য `cargo:rerun-if-changed` দেয়, তাই
+ইম্পোর্ট করা কম্পোনেন্ট সহ এডিট করলেও সঠিকভাবে রিবিল্ড হয়।
+</Callout>
+
+## ডেভেলপমেন্ট লুপ
+
+```bash
+velox dev
+```
+
+সংশ্লিষ্ট ফাইল পরিবর্তন OS দিয়ে জানানো হয়, তাই সেভ মিলিসেকেন্ডে
+ধরা পড়ে। `target/`, `.git` ও ডট-ডিরেক্টরি বাদ — cargo `target/`-এ
+হাজার হাজার ফাইল লেখে, ওইটা দেখলে কার্নেলের inotify বাজেট শেষ হয়ে যায়।
+
+`r` দিয়ে পুনর্বিল্ড, `q` দিয়ে প্রস্থান।
+
+<Callout type="danger" title="এটি রিবিল্ড, হট রিলোড নয়">
+`velox dev` একটি সম্পূর্ণ `cargo build` করে এবং প্রসেসটি পুনরায় চালু করে।
+আপনার মেমরির state এডিটের পরে টিকে থাকে না। এটি vite-এর মতো
+state-সংরক্ষণকারী hot module replacement নয়।
+</Callout>
+
+## আসল উদাহরণ চালান
+
+```bash
+cargo run -p velox-example-counter
+cargo run -p velox-example-todo
+cargo run -p velox-example-showcase
+```
+
+todo উদাহরণটি সবচেয়ে আকর্ষণীয় — props ও emits সহ কম্পোনেন্ট,
+ফিল্টার করা তালিকার উপর `v-for`, এবং all/active/done ফিল্টার সাইকেল।
+এরপর [কম্পোনেন্ট](/bn/docs/components) পড়ুন।

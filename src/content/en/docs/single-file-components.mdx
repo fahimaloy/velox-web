@@ -1,0 +1,183 @@
+---
+title: Single-file components
+description: Anatomy of a .vx file: template, script setup, and the scoped stylesheet.
+order: 10
+section: guide
+readingMinutes: 8
+---
+
+A Velox component is one file ending in `.vx`, containing up to three blocks.
+All three are optional, but a component with only a template is static.
+
+## The three blocks
+
+```html
+<template>…</template>
+<script setup>…</script>
+<style scoped>…</style>
+```
+
+- **`<template>`** — the markup, with Velox's own attribute syntax.
+- **`<script setup>`** — an item containing the Rust `State` struct, which is
+  what the template resolves against.
+- **`<style>`** — CSS. `scoped` is meaningful; without it the rules are global.
+
+Blocks may appear in any order. The parser identifies them by tag, not by
+position.
+
+## Template syntax
+
+Three kinds of binding:
+
+```html
+{{ expr }}              <!-- interpolation: renders to text -->
+:prop="expr"            <!-- binding: sets an attribute -->
+@event="handler"        <!-- event: calls a method on State -->
+```
+
+```html
+<template>
+  <h1>{{ title() }}</h1>                    <!-- call a method -->
+  <img :src="user.avatar()" />              <!-- bind an attribute -->
+  <button @click="increment">+1</button>    <!-- event handler -->
+</template>
+```
+
+<Callout type="note" title="The parentheses are not optional">
+`{{ title() }}` calls the accessor. `{{ title }}` is a path that resolves
+against State and is a **compile error**, because a component's template reads
+its data through methods, not public fields. This is the single most common
+first mistake.
+</Callout>
+
+## Script setup
+
+```html
+<script setup>
+use velox_core::signal::Signal;
+
+pub struct Props {
+    pub value: String,
+    pub placeholder: String,
+}
+
+pub struct State {
+    pub props: Props,
+    pub draft: std::rc::Rc<Signal<String>>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self {
+            props: Props { value: String::new(), placeholder: "…".into() },
+            draft: velox_core::signal!(draft = String::new()),
+        }
+    }
+
+    pub fn on_input(&self, payload: &str) {
+        self.draft.set(payload.to_string());
+    }
+}
+</script>
+```
+
+The block is an ordinary Rust `item`. Anything legal in an `impl` block is legal
+here — which is the point. There is no restricted DSL and nothing to learn
+beyond Rust.
+
+## Scoped styles
+
+```html
+<style scoped>
+.todo-item { display: flex; }
+.todo-item.completed .todo-text { text-decoration: line-through; }
+</style>
+```
+
+`scoped` appends a generated `[data-v-<hash>]` attribute selector to **every
+compound selector**, and the hash is derived per component. In this example that
+compiles to roughly:
+
+```css
+.todo-item[data-v-8f3a1c]{display:flex}
+.todo-item[data-v-8f3a1c].completed .todo-text[data-v-8f3a1c]{text-decoration:line-through}
+```
+
+<Callout type="warning" title="The scoping trap — read this before styling a child">
+The selector is appended to the **leftmost** compound too. So a rule written
+`.dark .todo-item` becomes `.dark[data-v-APP] .todo-item[data-v-APP]`.
+
+A child component's elements carry the **child's** hash, never the parent's,
+because children are inlined into the parent's VNode tree. So that rule can
+never match a child's element. It is not a specificity problem you can fix by
+reordering; it is structurally impossible.
+
+Consequences:
+- A parent cannot style a child's internals with a scoped rule.
+- A child cannot respond to a parent-applied class with its scoped rules.
+- An **unscoped** block in the parent *does* reach the child's elements, since
+  the cascade walks the whole inlined tree.
+</Callout>
+
+## Component composition
+
+```html
+<template>
+  <TodoInput :value="draft" @input="on_input" />
+</template>
+
+<script setup>
+import TodoInput from './components/TodoInput.vx'
+
+pub struct State {
+    pub todoinput: Arc<super::todoinput::script_rs::State>,
+}
+
+impl State {
+    pub fn on_input(&self, payload: &str) {
+        self.todoinput.on_input(payload)
+    }
+}
+</script>
+```
+
+Note the generated module path `super::todoinput::script_rs::State`. `todoinput`
+is the sanitised file stem, `script_rs` is the fixed name for the script block.
+Neither is something you write — but you will read them in type errors, so it
+is worth knowing where they come from.
+
+<Callout type="danger" title="Emits currently do not fire">
+`define_emits` parses and typechecks, and the `emit()` call compiles. The
+runtime callback is looked up and then discarded, so a child that calls
+`emit('confirm')` invokes nothing. Until this is fixed, the only working
+channel is the parent binding `@input` / `@click` directly on the child.
+Verified in `velox-sfc/src/codegen.rs`. See
+[components](/docs/components).
+</Callout>
+
+## Slots
+
+```html
+<template>
+  <Modal :open="is_open()">
+    <div slot="footer"><button class="btn" @click="confirm">OK</button></div>
+  </Modal>
+</template>
+```
+
+<Callout type="warning" title="Named slots are not implemented">
+Only the default slot resolves. `slot="footer"` is carried as a plain string
+attribute; there is no `v-slot:` grammar and no named-slot dispatch. Anything
+inside a `slot="…"` attribute will render in the default position, or not at
+all. Treat named slots as planned, not available.
+</Callout>
+
+## File layout
+
+```html
+<!-- src/components/TodoInput.vx -->
+```
+
+Import with a relative path including the `.vx` extension — the codegen
+resolves and inlines the dependency at build time, so there is no runtime file
+loading and no import map to configure.

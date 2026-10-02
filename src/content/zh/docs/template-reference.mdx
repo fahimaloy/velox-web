@@ -1,0 +1,105 @@
+---
+title: 模板参考
+description: 指令、属性种类，以及 SFC 语法的确切形态。
+order: 21
+section: reference
+readingMinutes: 6
+---
+
+`velox-sfc` 究竟解析什么，这份精确清单就是。某条指令被列为未实现时，
+它照样能解析、lint 照样干净——知道哪些是哪些，正是本页的目的。
+
+## 指令
+
+| 指令 | 已实现 | 备注 |
+| --- | :---: | --- |
+| `v-if` | 是 | |
+| `v-else-if` | 是 | 必须紧跟 `v-if` |
+| `v-else` | 是 | 必须紧跟 `v-if`/`v-else-if` |
+| `v-for` | 是 | 每次迭代克隆该元素 |
+| `v-show` | 是 | 切换 `display`，保留节点 |
+| `v-model` | **否** | 能解析，lint 干净，但什么也不做 |
+| `v-slot` | **否** | 不在语法中 |
+
+`v-show` 值得一提：它设置样式而非移除节点，因此该元素保留布局参与和事件绑定。
+
+## 属性种类
+
+| 前缀 | 含义 | 示例 |
+| --- | --- | --- |
+| 无 | 静态文本 | `type="text"` |
+| `:` | 绑定到 State 表达式 | `:value="name()"` |
+| `@` | 事件处理器名 | `@click="increment"` |
+| `v-` | 指令 | `v-if="ok()"` |
+
+<Callout type="note" title="绑定属性会被转为字符串">
+`:foo="bar"` 生成 `foo="<to_string(bar)>"`。它不是有类型的值，也不会以有类型的
+形式存在。
+</Callout>
+
+## 插值
+
+```html
+<h1>{{ title() }}</h1>
+<p>{{ user.name() }}</p>
+```
+
+三种形态：一次调用、一条点路径、或路径中的一次调用。`{{ title }}` 是无效的——
+模板通过方法读取数据。
+
+## 条件链
+
+```html
+<button v-if="f() == 'a'">A</button>
+<button v-else-if="f() == 'b'">B</button>
+<button v-else>C</button>
+```
+
+<Callout type="warning" title="相邻性是按结构解析的">
+该链通过解析后模板中的兄弟相邻性来匹配。分支之间出现注释节点或非空白文本会
+打断它，结果是所有分支都被渲染。请保持三个元素紧邻。
+</Callout>
+
+## 样式
+
+| 形式 | 效果 |
+| --- | --- |
+| `<style>` | 规则是全局的 |
+| `<style scoped>` | 每个复合选择器都追加 `[data-v-<hash>]` |
+
+<Callout type="danger" title="第二个样式块会静默替换第一个">
+一个文件里的两个 `<style>` 块不会合并。第二个覆盖第一个，没有警告也没有 lint
+错误。只保留一个。
+</Callout>
+
+## 完整示例
+
+```html
+<template>
+  <div class="todo-app">
+    <input :value="draft" @input="on_input" :placeholder="hint" />
+    <span v-show="count() > 0">{{ count() }}</span>
+    <li v-for="t in items()" :key="t.id" :class="{ done: t.done }">
+      {{ t.text }}
+    </li>
+  </div>
+</template>
+
+<script setup>
+pub struct State {
+    count: velox_core::ergonomics::Ref<i32>,
+}
+impl State {
+    pub fn new() -> Self { Self { count: velox_core::r#ref!(0) } }
+    pub fn count(&self) -> i32 { self.count.get() }
+    pub fn draft(&self) -> String { String::new() }
+    pub fn items(&self) -> Vec<Item> { Vec::new() }
+    pub fn on_input(&self, _payload: &str) {}
+}
+</script>
+
+<style scoped>
+.todo-app { display: flex; flex-direction: column; gap: 8px; }
+.done { text-decoration: line-through; }
+</style>
+```

@@ -1,0 +1,87 @@
+---
+title: Roadmap and non-goals
+description: What is deliberately not implemented, and why stating it is more useful than a feature list.
+order: 40
+section: internals
+readingMinutes: 5
+---
+
+The most useful thing this page can do is tell you what will **not** work, so
+you do not design around it.
+
+## Declared non-goals
+
+These are decisions, not omissions.
+
+| Non-goal | Why |
+| --- | --- |
+| DOM compatibility | No virtual document. The tree exists only for one frame. |
+| Browser APIs | No `window`, no network stack, no `fetch`. |
+| Server rendering | CPU raster and a window is the product. |
+| Keyed reconciliation | The immediate-mode loop is the architecture. |
+| CSS specificity / `!important` | Source order is the override mechanism. |
+| WASM target | Skia's GPU stack does not build for it. |
+
+<Callout type="note" title="Declared non-goals are the good kind">
+A framework that tells you what it will not do saves you from finding out the
+expensive way. The ones above are all deliberate.
+</Callout>
+
+## Broken or unimplemented today
+
+These are bugs or gaps, tracked and being worked on. They are listed separately
+because "we chose not to" and "we have not finished" are different answers.
+
+### Renderer
+
+- Input paint hardcodes background, border and value colour, discarding author
+  styling.
+- `line-through` is accepted by the parser and never painted.
+- `::placeholder` does not exist, so placeholder text is not separately
+  styleable.
+- No `on:keydown`; `Esc` and `F2` never reach user code.
+- `r` and `q` rebuild/quit even while a text field has focus.
+- The GPU path does not compile on Windows or macOS.
+- `into_direct_context` returns an owning value that outlives the guard whose
+  `Drop` destroys its EGL surface.
+
+### Components
+
+- `emit()` looks the handler name up and discards it.
+- Bound props are stringified; function props are impossible.
+- Named slots do not exist.
+- No built-in component registry — `velox add` scaffolds a file you import.
+
+### CSS
+
+- Custom properties and `var()` are inert.
+- `@media` preludes are never evaluated, so media queries apply everywhere.
+- Sibling combinators `+` and `~` are not supported.
+- A second `<style>` block silently replaces the first.
+
+### Tooling
+
+- `velox dev` is a full rebuild and process restart, not hot module
+  replacement.
+- Two golden-image checksums are stale on a pristine checkout, so CI is not
+  green at HEAD.
+- `cargo audit` reports 5 advisories; one is fixed by deleting unused deps,
+  four are build-time-only and waived with recorded justification.
+
+## What is actively being worked on
+
+A core-component set (Modal, Confirm) and renderer correctness for inputs,
+placeholder text, `line-through` and key handling. See the repository's
+`docs/plans/` directory for the sequenced plan.
+
+<Callout type="warning" title="Plans are not promises">
+Anything in `docs/plans/` describes intended work. It may change, land
+partially, or be superseded. This page tracks observed behaviour in the source;
+the plan files track intent.
+</Callout>
+
+## Reporting something wrong
+
+If this documentation contradicts the source, that is a bug in this site and
+worth reporting — the whole site is built on claims verified against code. Open
+an issue with the file path and the line you are questioning.

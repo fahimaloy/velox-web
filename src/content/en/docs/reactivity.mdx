@@ -1,0 +1,175 @@
+---
+title: Reactivity
+description: Signals, computed values, effects, watchers and two-way bindings.
+order: 11
+section: guide
+readingMinutes: 8
+---
+
+State is a Rust struct. Reactivity is a set of primitives you put fields in.
+There is no virtual DOM behind it and no automatic dependency tracking by
+default — `watch` and `effect` are explicit.
+
+## Signals
+
+```rust
+use velox_core::signal::Signal;
+
+pub struct State {
+    counter: Rc<Signal<i32>>,
+    name: Rc<Signal<String>>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self {
+            counter: velox_core::signal!(counter = 0),
+            name: velox_core::signal!(name = String::new()),
+        }
+    }
+
+    pub fn increment(&self) {
+        self.counter.set(self.counter.get() + 1);
+    }
+}
+```
+
+`signal!(name = value)` is a macro that expands to an `Rc<Signal<T>>`. Writing
+with `.set()` marks dependents dirty; reading with `.get()` registers the
+caller as a dependent.
+
+```html
+<template>
+  <p>{{ count() }}</p>
+  <button @click="increment">+1</button>
+</template>
+```
+
+The template's `{{ count() }}` resolves on every frame, so the value is always
+current — the signal's only job is to schedule a redraw.
+
+<Callout type="note" title="Immediate-mode, so reads are cheap">
+Because there is no retained tree to patch, reading a signal inside a render
+function is not a tracked dependency in the virtual-DOM sense. The scheduler
+marks the frame dirty; `render()` re-runs and produces the whole tree again.
+</Callout>
+
+## Computed
+
+For a value derived from others:
+
+```rust
+use velox_core::computed::computed;
+
+pub struct State {
+    items: Rc<Signal<Vec<Item>>>,
+    done_count: Rc<Computed<usize>>,
+}
+
+impl State {
+    pub fn new() -> Self {
+        let items = velox_core::signal!(items = Vec::new());
+        let done_count = computed!(source = items.clone(), |items| {
+            items.iter().filter(|i| i.done).count()
+        });
+        Self { items, done_count }
+    }
+
+    pub fn done_count(&self) -> usize { self.done_count.get() }
+}
+```
+
+Computed values recompute when a source changes, not on every frame — worth
+having when the derivation is genuinely expensive.
+
+## v-model
+
+Two-way binding on form fields:
+
+```html
+<input :value="name" @input="set_name" />
+```
+
+<Callout type="danger" title="v-model does not exist as a directive">
+The parser accepts `v-model` and the linter does not flag it, but there is no
+directive handling it. `:value` + `@input` is the mechanism that works. If you
+write `v-model`, your field will not update and nothing will warn you.
+</Callout>
+
+## Effects and watchers
+
+```rust
+use velox_core::effect::Effect;
+
+pub struct State {
+    log: Rc<Signal<Vec<String>>>,
+}
+
+impl State {
+    pub fn mount(&self) {
+        // Runs on the next frame after the component first renders.
+        self.spawn_effect("initialised", |_| {
+            println!("component mounted");
+        });
+    }
+}
+```
+
+Effects run after render, in registration order. Watchers are the same
+primitive with a filter on the source value, so they only fire on change:
+
+```rust
+self.watch("count", |value| {
+    if value % 10 == 0 {
+        println!("count is now a multiple of ten: {value}");
+    }
+});
+```
+
+## Lists
+
+```html
+<template>
+  <ul class="todos">
+    <li v-for="todo in todos()" :key="todo.id" class="todo-item">
+      {{ todo.text }}
+    </li>
+  </ul>
+</template>
+```
+
+`v-for` is a real directive: it iterates the expression and clones the element.
+
+<Callout type="danger" title=":key is a plain string attribute">
+It is captured and emitted, and it survives into the VNode — but nothing reads
+it, because there is no reconciler to key against. Reordering a `v-for` list
+does not preserve element identity, state or focus across the reorder. Do not
+assume key-based behaviour; the todo example uses it because it is good habit
+and costs nothing, not because the runtime honours it.
+</Callout>
+
+## Conditional rendering
+
+```html
+<button v-if="filter() == 'all'" class="btn active">All</button>
+<button v-else-if="filter() == 'active'" class="btn">Active</button>
+<button v-else class="btn">Done</button>
+```
+
+`v-if`, `v-else-if` and `v-else` are chained on **adjacent siblings**. Because
+the chain is resolved by sibling adjacency, whitespace or a comment node
+between the branches can break the chain and silently render all branches.
+
+## Summary
+
+| Feature | Status |
+| --- | --- |
+| `Signal<T>` with `.get()` / `.set()` | Works |
+| `computed!` | Works |
+| `spawn_effect` | Works |
+| `watch` | Works |
+| `v-for` | Works |
+| `v-if` / `v-else-if` / `v-else` | Works |
+| `v-model` | **Parsed, not implemented** |
+| `:key` | Emitted, not honoured |
+| Automatic dependency tracking | Not present |

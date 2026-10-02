@@ -1,0 +1,265 @@
+{
+  "meta": {
+    "title": "Velox — Rust 的原生 UI 框架",
+    "titleTemplate": "%s · Velox",
+    "description": "Velox 是一个模块化的 Rust UI 框架：单文件组件编译器、布局引擎、CSS 级联，以及一个直接把像素绘制到屏幕上的 Skia 渲染器。没有浏览器，没有 DOM，没有运行时。",
+    "ogAlt": "Velox 首页：一个将像素渲染到 Skia 光栅表面的 Rust UI 框架"
+  },
+  "nav": {
+    "docs": "文档",
+    "examples": "示例",
+    "crates": "crate",
+    "roadmap": "路线图",
+    "github": "GitHub",
+    "menu": "菜单",
+    "openMenu": "打开导航菜单",
+    "closeMenu": "关闭导航菜单",
+    "primary": "主导航"
+  },
+  "theme": {
+    "label": "主题",
+    "toggle": "切换配色主题",
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "language": {
+    "label": "语言",
+    "select": "选择语言",
+    "current": "当前语言：{name}"
+  },
+  "install": {
+    "title": "安装 CLI",
+    "description": "Velox 以 cargo 二进制形式发布。从源码构建，或安装到你的 cargo bin 目录。",
+    "fromSource": "从仓库克隆中安装",
+    "published": "发布到 crates.io 之后",
+    "copy": "复制命令",
+    "copied": "已复制"
+  },
+  "hero": {
+    "eyebrow": "Rust · SFC 编译器 · Skia · 无 DOM",
+    "titleLine1": "一个绘制像素的",
+    "titleLine2": "UI 框架，",
+    "titleAccent": "而不是维护一棵树。",
+    "lede": "Velox 把单文件组件编译为 Rust，运行真正的布局引擎，解析 CSS 级联，再通过 Skia 将结果光栅化。这里没有 DOM，也没有浏览器——只有一棵树、一趟布局计算，以及你自己掌控的画布上的像素。",
+    "ctaPrimary": "阅读文档",
+    "ctaSecondary": "在 GitHub 上查看",
+    "statCrates": "个 crate，可独立使用",
+    "statLoc": "行 Rust 代码",
+    "statTests": "个集成测试",
+    "statBackends": "个渲染后端"
+  },
+  "pipeline": {
+    "title": "一帧的完整流程",
+    "description": "一个信号发生变化。以下每一步都在下一帧重新执行——因为没有需要保留的树，所以也无需与之比对。",
+    "stages": {
+      "signal": {
+        "name": "信号",
+        "desc": "状态变化；依赖的 effect 被排入队列。"
+      },
+      "render": {
+        "name": "渲染",
+        "desc": "生成的 render() 构建一棵全新的 VNode 树。"
+      },
+      "style": {
+        "name": "样式解析",
+        "desc": "样式表解析到树上。最后匹配者胜。"
+      },
+      "layout": {
+        "name": "布局",
+        "desc": "块布局与弹性布局为视口计算几何信息。"
+      },
+      "paint": {
+        "name": "绘制",
+        "desc": "Skia 光栅化到复用的表面，然后呈现。"
+      }
+    },
+    "note": "每个阶段都在每一帧从头运行。没有任何东西与上一帧做比较。"
+  },
+  "features": {
+    "title": "Velox 是什么",
+    "description": "以下都是今天确实存在的部分，数字来自源码而非路线图。",
+    "items": {
+      "sfc": {
+        "title": "单文件组件",
+        "body": "一个 .vx 文件同时包含 template、script setup 和 style 块。velox-sfc 解析它并生成普通的 Rust render 函数——没有运行时编译器，没有 eval，运行期不做任何解释。"
+      },
+      "reactivity": {
+        "title": "信号与副作用",
+        "body": "Signal、effect、computed、watch 与 next_tick 覆盖了响应式原语。状态是 Rc<Signal<T>>，这在类型上就使其 !Send——Velox 有意采用「一个窗口一个线程」的模型。"
+      },
+      "layout": {
+        "title": "真正的布局引擎",
+        "body": "块级与 flexbox 布局、外边距与内边距、固有尺寸与受约束尺寸、绝对与固定定位、z-index 与层叠上下文、溢出裁剪与滚动偏移。"
+      },
+      "style": {
+        "title": "一套 CSS 级联",
+        "body": "约 120 个属性，支持后代选择器与属性选择器，并可将内联样式合成为规则。没有优先级，也没有 !important——由源码顺序决定，因此顺序就是覆盖机制。"
+      },
+      "render": {
+        "title": "Skia 渲染",
+        "body": "一个在帧间复用的 CPU 光栅表面，经由 softbuffer 呈现。走光栅路径是刻意的：它让渲染出的字节保持确定性，而这正是像素测试得以存在的前提。"
+      },
+      "events": {
+        "title": "事件与输入",
+        "body": "点击、输入与显式载荷，按绘制顺序与层叠关系做命中测试。文本框拥有真实的插入符几何、编辑按键，以及跨帧的焦点保持。"
+      },
+      "cli": {
+        "title": "开发者 CLI",
+        "body": "velox init 搭建项目，velox dev 监听并重建，velox lint 检查 .vx 文件，velox add 写入新组件。开发服务器执行的是完整进程重建，而非热状态替换。"
+      },
+      "tooling": {
+        "title": "编辑器支持",
+        "body": "本仓库即为 VS Code、Zed 与 Neovim 提供 .vx 的语法高亮。"
+      }
+    }
+  },
+  "crates": {
+    "title": "六个 crate，可独立使用",
+    "description": "每个 crate 都有自己的 Cargo.toml 和自己的测试。列表中的任何一项都不依赖整个框架。",
+    "columns": {
+      "crate": "crate",
+      "role": "职责",
+      "loc": "行数"
+    },
+    "locNote": "行数统计于撰写时的源码树，之后会变化。",
+    "footnote": "渲染器 crate 默认不构建任何后端——需要显式选择后端。"
+  },
+  "showcase": {
+    "title": "一个组件，端到端",
+    "description": "这是来自 examples/todo 的真实 .vx 文件。模板、响应式状态与 scoped 样式表都在同一个文件里——而编译器把它变成普通的 Rust。",
+    "tabs": {
+      "component": "TodoInput.vx",
+      "generated": "生成的 Rust",
+      "usage": "用法"
+    },
+    "generatedNote": "为便于阅读已简化。真实输出还包含 make_resolve、make_on_event 以及 scoped CSS 转换。"
+  },
+  "examples": {
+    "title": "可直接运行的示例",
+    "description": "工作区中有三个示例程序，用一条命令即可构建并运行其中任意一个。",
+    "run": "运行",
+    "items": {
+      "counter": {
+        "name": "counter",
+        "desc": "信号、计算文本、文本框上的 v-model，以及直接绑定到状态方法的按钮。"
+      },
+      "todo": {
+        "name": "todo",
+        "desc": "带 props 与 emits 的组件、在过滤后列表上的 v-for，以及在全部/进行中/已完成之间切换的过滤器。"
+      },
+      "showcase": {
+        "name": "showcase",
+        "desc": "一个布局画廊：居中、间距、flex 行与列、可滚动容器以及文本对齐。"
+      }
+    }
+  },
+  "nonGoals": {
+    "title": "它不做什么",
+    "description": "把边界直白地说出来，比一份夸大其词的特性列表更有用。",
+    "items": {
+      "hotReload": "没有热状态替换。velox dev 监听文件并执行完整重建与重启——改一个组件就会重启进程。",
+      "reconciliation": "渲染循环中没有虚拟 DOM diff。曾存在的协调器已被删除；循环是立即模式的，compute_layout 每帧重新运行。",
+      "key": ":key 属性只是一个普通字符串属性。它不会重排、不会 diff，也不会在重排之间保持状态。",
+      "media": "深色模式是应用级的。没有 prefers-color-scheme，也没有 var()——主题是根节点上的一个类，加上字面量调色板。",
+      "events": "目前存在三条运行时事件通道：on:click、on:click-payload 与 on:input。通用快捷键系统尚未提供。",
+      "gpu": "没有 GPU 后端。渲染目标是 CPU 光栅表面，这是刻意为之，以保证渲染的确定性。"
+    }
+  },
+  "cta": {
+    "title": "从快速开始入手",
+    "description": "搭建一个项目并运行起来，需要更多时再查阅 SFC 参考。",
+    "button": "开始使用"
+  },
+  "footer": {
+    "tagline": "Rust 的原生 UI 框架。",
+    "builtWith": "使用 Next.js 构建",
+    "license": "MIT 许可证",
+    "source": "源码",
+    "docs": "文档",
+    "crates": "crate",
+    "project": "项目"
+  },
+  "search": {
+    "label": "搜索文档",
+    "placeholder": "搜索文档…",
+    "noResults": "没有匹配该查询的页面。",
+    "resultsCount": "{count, plural, =0 {没有结果} one {# 个结果} other {# 个结果}}",
+    "hint": "按 / 搜索",
+    "clear": "清除搜索",
+    "results": "{count} 条结果",
+    "empty": "没有匹配的页面。"
+  },
+  "docs": {
+    "onThisPage": "目录",
+    "editPage": "查看源码",
+    "previous": "上一页",
+    "next": "下一页",
+    "fallbackNotice": "此页面尚未翻译，因此以英文显示。",
+    "fallbackNoticeShort": "尚未翻译",
+    "missingTitle": "未找到页面",
+    "missingBody": "你请求的页面在此语言下不存在。它可能已被移动，也可能尚未撰写。",
+    "goHome": "返回首页",
+    "browseAll": "浏览全部文档",
+    "copyPage": "复制页面链接",
+    "readingTime": "阅读约 {minutes} 分钟"
+  },
+  "callout": {
+    "note": "说明",
+    "tip": "提示",
+    "warning": "注意",
+    "danger": "重要",
+    "info": "信息",
+    "planned": "计划中"
+  },
+  "code": {
+    "copy": "复制代码",
+    "copied": "已复制",
+    "viewSource": "查看源码"
+  },
+  "form": {
+    "title": "联系我们",
+    "description": "发现缺陷，或希望参与贡献？提一个 issue——这是最快抵达维护者的方式。",
+    "emailLabel": "邮箱",
+    "emailPlaceholder": "you@example.com",
+    "messageLabel": "留言",
+    "messagePlaceholder": "你想告诉我们什么？",
+    "submit": "发送",
+    "submitting": "发送中…",
+    "success": "谢谢——这个演示表单仅在客户端校验，因此并未真正发送任何内容。",
+    "errors": {
+      "email": "请输入有效的邮箱地址。",
+      "messageMin": "请至少写 20 个字，以便我们提供帮助。",
+      "messageMax": "请控制在 2000 字以内。"
+    },
+    "characterCount": "{count} / {max}"
+  },
+  "a11y": {
+    "skipToContent": "跳到正文",
+    "openSidebar": "打开文档导航",
+    "closeSidebar": "关闭文档导航",
+    "toggleTheme": "切换主题",
+    "externalLink": "在新标签页打开"
+  },
+  "directiveTable": {
+    "directive": "指令",
+    "implemented": "已实现",
+    "yes": "是",
+    "no": "否",
+    "notes": {
+      "if": "有条件地渲染该元素。",
+      "elseIf": "必须紧跟 `v-if`。",
+      "else": "必须紧跟 `v-if`/`v-else-if`。",
+      "for": "每次迭代克隆该元素。",
+      "show": "切换 display；节点保留。",
+      "model": "能解析、lint 干净，但什么也不做。",
+      "slot": "根本不在语法里。"
+    }
+  },
+  "docsIndex": {
+    "title": "文档",
+    "description": "关于 Velox 的一切——均对照源码核实，而非路线图。",
+    "coverage": "本页语言已翻译 {translated} / {total} 页。未翻译的页面以英文显示。",
+    "readingTime": "阅读需 {minutes} 分钟"
+  }
+}

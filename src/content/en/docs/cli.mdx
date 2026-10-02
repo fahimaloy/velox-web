@@ -1,0 +1,108 @@
+---
+title: CLI reference
+description: Every velox subcommand: init, build, dev, run, lint, add and version.
+order: 20
+section: reference
+badge: beta
+readingMinutes: 5
+---
+
+## velox init
+
+```bash
+velox init <name>
+```
+
+Scaffolds a cargo project with `Cargo.toml`, `build.rs`, `assets/` and
+`src/{App.vx,main.rs}`.
+
+| Flag | Effect |
+| --- | --- |
+| `--name <name>` | Override the crate name |
+| `--v <0.1.0>` | Version string |
+| `--edition <2024>` | Rust edition |
+| `--force` | Overwrite existing files |
+| `--dry-run` | Print the plan, write nothing |
+
+## velox build
+
+```bash
+velox build [--release] [--out-dir <dir>] [--emit <mode>]
+```
+
+Compiles `.vx` to Rust and runs cargo.
+
+| Emit mode | Output |
+| --- | --- |
+| `render` | Render function + resolver + on-event dispatcher (default) |
+| `card` | Card-only renderer |
+| `app` | Full application shell |
+
+## velox run
+
+```bash
+velox run [--release] [--backend <name>]
+```
+
+Build, then open a window and run the event loop. `--backend` takes `skia` or
+`wgpu`; `skia-native` is the only GPU path that works today.
+
+## velox dev
+
+```bash
+velox dev [--release] [--port <n>]
+```
+
+Runs the process and watches `src/` for changes, rebuilding on save. Excludes
+`target/`, `.git` and dot-directories — cargo writes thousands of files into
+`target/`, and watching it exhausts the kernel inotify budget.
+
+Keys: `r` rebuild, `q` quit.
+
+<Callout type="danger" title="r and q kill a running app even while typing">
+There is no focused-input guard. Typing `r` or `q` into a text field while
+`velox dev` is running triggers a rebuild or a quit. This is a live bug.
+</Callout>
+
+## velox lint
+
+```bash
+velox lint <path>... [--strict]
+```
+
+Parse and style checks without a full compile — fast enough for an editor
+save hook. Checks duplicate class definitions, duplicate event handlers,
+unknown CSS properties, and unreachable `v-else` branches.
+
+## velox add
+
+```bash
+velox add <component>
+```
+
+Copies a component template into the project and **prints the import line** for
+you to add by hand. It errors if the file already exists.
+
+| Flag | Effect |
+| --- | --- |
+| `--force` | Overwrite an existing file |
+
+<Callout type="note" title="There are no built-in components">
+`modal`, `confirm`, `dropdown` and friends exist as scaffold templates, not as
+globally registered components. You import the file you just created and you
+own it — which is why it is fully restyleable, and why it is also your job to
+keep it working. Codegen-seeded built-ins, where `<Modal>` would work with no
+import at all, are on the [roadmap](/docs/roadmap).
+</Callout>
+
+## velox version
+
+```bash
+velox version
+```
+
+```text
+velox 0.1.0
+Edition: 2024
+Platform: Linux
+```
