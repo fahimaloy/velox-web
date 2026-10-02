@@ -23,7 +23,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          # No `version:` here on purpose. `packageManager` in package.json is
+          # the single source of truth; specifying both makes pnpm/action-setup
+          # fail with "Multiple versions of pnpm specified", which is exactly
+          # how this workflow failed on its first run.
+          package_json_file: package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
