@@ -261,5 +261,40 @@
     "description": "关于 Velox 的一切——均对照源码核实，而非路线图。",
     "coverage": "本页语言已翻译 {translated} / {total} 页。未翻译的页面以英文显示。",
     "readingTime": "阅读需 {minutes} 分钟"
+  },
+  "story": {
+    "eyebrow": "起源故事",
+    "title": "为什么创建 Velox",
+    "subtitle": "一名 Web 开发者寻找无复杂度原生 GUI 的旅程",
+    "chapters": [
+      {
+        "id": "problem",
+        "title": "问题所在",
+        "icon": "puzzle",
+        "content": "作为 Web 开发者，GUI 开发显得不必要地复杂。GTK、Iced、QML —— 每个都有完全不同的语法和陡峭的学习曲线。Web 开发的样式概念（margin、padding、flexbox）完全不适用。逻辑与 UI 分散在不同文件、不同语言中。Electron 和 Tauri 是不错的选择，但它们依赖 Web 技术和 WebView 渲染，无法提供真正的原生体验。Flutter 很强大，但它是基于类的、用 Dart 编写，给 Web 开发者带来了巨大的学习曲线。"
+      },
+      {
+        "id": "insight",
+        "title": "洞察",
+        "icon": "lightbulb",
+        "content": "Rust 我觉得是编程的未来 —— 设计上内存安全。但 Rust 的 GUI 框架还不够稳定。我非常喜欢 Vue —— 它的语法简洁优雅。如果 Web 开发者能写 Vue 风格的代码、CSS 风格的样式，底层却拥有 Rust 的内存安全和 Flutter 级的渲染能力，会怎样？"
+      },
+      {
+        "id": "solution",
+        "title": "解决方案",
+        "icon": "sparkles",
+        "content": "Velox 给你 Vue 的开发体验：单文件组件、模板语法、响应式信号、作用域样式。底层是纯 Rust + Skia（Flutter 同款引擎）直接光栅化到原生窗口。没有浏览器，没有 DOM，没有 WebView。你写熟悉的代码；Velox 负责编译器、布局引擎、CSS 层叠和 GPU 光栅化。"
+      },
+      {
+        "id": "win",
+        "title": "三赢",
+        "icon": "trophy",
+        "items": [
+          "开发者获得 Vue 风格语法，零学习曲线",
+          "应用获得 Rust 内存安全与原生性能",
+          "渲染获得 Skia —— Flutter 同款引擎"
+        ]
+      }
+    ]
   }
 }

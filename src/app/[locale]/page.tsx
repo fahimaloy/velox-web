@@ -109,7 +109,7 @@ export default async function LandingPage({
                 {t("install.title")}
               </p>
               <CommandBlock
-                command="cargo install --path velox-cli --force"
+                command="cargo install velox-cli"
                 className="mt-2.5 max-w-md"
               />
             </div>

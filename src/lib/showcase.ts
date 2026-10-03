@@ -136,7 +136,7 @@ impl State {
 </script>`;
 
 /** The quick-start snippet used on the landing CTA and in the docs. */
-export const QUICK_START = `cargo install --path velox-cli --force
+export const QUICK_START = `cargo install velox-cli
 
 velox init my-app
 cd my-app

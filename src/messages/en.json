@@ -37,11 +37,11 @@
     "copied": "Copied"
   },
   "hero": {
-    "eyebrow": "Rust · SFC compiler · Skia · No DOM",
+    "eyebrow": "Rust · SFC · Skia · No DOM",
     "titleLine1": "A UI framework",
     "titleLine2": "that paints pixels,",
     "titleAccent": "not a tree.",
-    "lede": "Velox compiles single-file components to Rust, runs a real layout engine, resolves a CSS cascade, and rasterizes the result through Skia. There is no DOM and no browser — just a tree, a layout pass, and pixels on a surface you own.",
+    "lede": "Velox compiles Vue-like components to Rust, runs a real layout engine, resolves a CSS cascade, and rasterizes through Skia. No browser. No DOM. No webview. Just a tree, a layout pass, and pixels on a surface you own.",
     "ctaPrimary": "Read the docs",
     "ctaSecondary": "View on GitHub",
     "statCrates": "crates, each usable alone",
@@ -261,5 +261,40 @@
     "description": "Everything about Velox, verified against the source rather than the roadmap.",
     "coverage": "{translated} of {total} pages are translated into this language. Untranslated pages are shown in English.",
     "readingTime": "{minutes} min read"
+  },
+  "story": {
+    "eyebrow": "The origin story",
+    "title": "Why I built Velox",
+    "subtitle": "A web developer's search for native GUI without the complexity",
+    "chapters": [
+      {
+        "id": "problem",
+        "title": "The problem",
+        "icon": "puzzle",
+        "content": "As a web developer, GUI development felt unnecessarily complicated. GTK, Iced, QML — each has completely different syntaxes and steep learning curves. Web development styling concepts don't translate: margin, padding, flexbox — none of it works the same way. Logic and UI are split across different files in different languages. Electron and Tauri are good options, but they rely on web technologies and webview rendering, which fails to deliver truly native experiences. Flutter is powerful, but it's class-based, written in Dart, and adds a massive learning curve for web developers."
+      },
+      {
+        "id": "insight",
+        "title": "The insight",
+        "icon": "lightbulb",
+        "content": "Rust feels like the future of coding — memory safe by design. But GUI frameworks in Rust aren't stable enough yet. I love Vue — its syntax is simply beautiful. What if a web developer could write Vue-like code, with CSS-like styles, but have Rust's memory safety and Flutter-level rendering power underneath?"
+      },
+      {
+        "id": "solution",
+        "title": "The solution",
+        "icon": "sparkles",
+        "content": "Velox gives you Vue's developer experience: single-file components, template syntax, reactive signals, scoped styles. Under the hood, it's pure Rust with Skia (the same engine behind Flutter) rasterizing to a native window. No browser, no DOM, no webview. You write familiar code; Velox handles the compiler, layout engine, CSS cascade, and GPU rasterization."
+      },
+      {
+        "id": "win",
+        "title": "Win · Win · Win",
+        "icon": "trophy",
+        "items": [
+          "Developer gets Vue-like syntax and zero learning curve",
+          "Application gets Rust's memory safety and native performance",
+          "Rendering gets Skia — the same engine powering Flutter"
+        ]
+      }
+    ]
   }
 }
