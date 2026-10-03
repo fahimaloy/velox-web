@@ -1,9 +1,11 @@
 import { useCurrentFrame, interpolate, AbsoluteFill } from 'remotion';
 import React from 'react';
 import { SCENES, VELOX_COLORS, FONT_STACK } from '../constants/video';
-import { useFadeIn, useSlideUp, useSpringScale } from '../utils/animations';
+import { useFadeIn, useSlideUp } from '../utils/animations';
 import { VELOX_COUNTER_CODE, DEMO_COMMANDS } from '../constants/codeSamples';
 import { CodeDisplay, Terminal } from '../components/CodeDisplay';
+import { Video } from '@remotion/media';
+import { staticFile } from 'remotion';
 
 interface SceneProps {
   startFrame?: number;
@@ -25,12 +27,6 @@ export const DemoScene: React.FC<SceneProps> = ({ startFrame = SCENES.demo.start
 
   const windowOpacity = useFadeIn(startFrame, 30, { delay: 30 });
   const windowSlide = useSlideUp(startFrame, 30, 40, { delay: 35 });
-
-  // Button click animation
-  const clickFrame = startFrame + duration * 0.6;
-  const clickScale = useSpringScale(clickFrame, 15, 1, 0.92, { damping: 150 });
-  const rippleOpacity = interpolate(frame, [clickFrame, clickFrame + 20], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
-  const rippleScale = interpolate(frame, [clickFrame, clickFrame + 20], [0, 2], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
   // Dev reload animation
   const reloadFrame = startFrame + duration * 0.8;
@@ -185,7 +181,7 @@ export const DemoScene: React.FC<SceneProps> = ({ startFrame = SCENES.demo.start
           />
         </div>
 
-        {/* Panel 3: Live App Window */}
+        {/* Panel 3: Live App Window — REAL VIDEO FOOTAGE */}
         <div
           style={{
             flex: 1,
@@ -219,120 +215,28 @@ export const DemoScene: React.FC<SceneProps> = ({ startFrame = SCENES.demo.start
             </span>
           </div>
 
-          {/* Simulated Velox App Window */}
+          {/* Real Velox App Video Footage */}
           <div style={{
             flex: 1,
-            background: '#0f172a',
+            background: '#0A0E11',
             border: `1px solid ${VELOX_COLORS.darkBorder}`,
             borderRadius: 12,
             overflow: 'hidden',
             position: 'relative',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
           }}>
-            {/* App content */}
-            <div style={{
-              padding: '24px',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              color: '#f1f5f9',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              height: '100%',
-              justifyContent: 'center',
-            }}>
-              <h1 style={{
-                fontSize: 24, fontWeight: 700, margin: '0 0 24px 0',
-                textAlign: 'center', color: '#38bdf8',
-              }}>
-                Velox Counter
-              </h1>
-              <div style={{
-                width: 320,
-                background: '#1e293b',
-                borderRadius: 12,
-                padding: '24px',
-                textAlign: 'center',
-              }}>
-                <div style={{
-                  fontSize: 48, fontWeight: 700, color: '#38bdf8',
-                  marginBottom: 8, fontFamily: '"JetBrains Mono", monospace',
-                }}>
-                  0
-                </div>
-                <div style={{
-                  fontSize: 14, color: '#94a3b8', marginBottom: 16,
-                }}>
-                  not positive
-                </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-                  <input
-                    style={{
-                      padding: '8px 12px', borderRadius: 6, border: 'none',
-                      background: '#334155', color: '#f1f5f9',
-                      fontSize: 13, width: 160,
-                    }}
-                    placeholder="counter"
-                    readOnly
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <button
-                    style={{
-                      padding: '10px 20px', borderRadius: 8, border: 'none',
-                      background: '#4ade80', color: '#0f172a',
-                      fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                      transform: `scale(${clickScale})`,
-                      transformOrigin: 'center',
-                    }}
-                  >
-                    +1
-                  </button>
-                  <button
-                    style={{
-                      padding: '10px 20px', borderRadius: 8, border: 'none',
-                      background: '#fbbf24', color: '#0f172a',
-                      fontSize: 14, fontWeight: 600,
-                    }}
-                  >
-                    -1
-                  </button>
-                  <button
-                    style={{
-                      padding: '10px 20px', borderRadius: 8, border: 'none',
-                      background: '#94a3b8', color: '#0f172a',
-                      fontSize: 14, fontWeight: 600,
-                    }}
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Click ripple effect */}
-            <div
+            <Video
+              src={staticFile("velox-demo.mp4")}
               style={{
-                position: 'absolute',
-                top: '50%', left: '50%',
-                transform: `translate(-50%, -50%) scale(${rippleScale})`,
-                width: 200, height: 200,
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${VELOX_COLORS.tealLight}40, transparent)`,
-                pointerEvents: 'none',
-                opacity: rippleOpacity,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
               }}
-            />
-
-            {/* Reload flash */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: `rgba(45, 212, 191, ${0.15 * (1 - reloadFlash)})`,
-                pointerEvents: 'none',
-                opacity: frame >= reloadFrame ? 1 : 0,
-                transition: 'opacity 0.1s',
-              }}
+              // The video is ~19.38s at ~10.68fps = ~207 frames
+              // Our composition is 30fps, duration=540 frames (18s)
+              // Trim to fit our 18s window
+              trimBefore={0}
+              durationInFrames={540}
             />
           </div>
 
